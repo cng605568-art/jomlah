@@ -1,0 +1,4 @@
+# Automatic HTTPS (Let's Encrypt) for whatever DOMAIN is set to, e.g. api.yourdomain.my
+{$DOMAIN} {
+	reverse_proxy api:8080
+}

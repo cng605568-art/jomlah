@@ -1,0 +1,50 @@
+# Reports backend: PostGIS + the API (+ optional automatic HTTPS).
+#   cp .env.example .env     (then edit it)
+#   docker compose up -d db api                    local / testing
+#   docker compose --profile https up -d           public, once DNS points at this server
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: jomlah
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+      POSTGRES_DB: jomlah
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+      - ./api/db/init.sql:/docker-entrypoint-initdb.d/001-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jomlah"]
+      interval: 5s
+      retries: 12
+
+  api:
+    build: ./api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://jomlah:${DB_PASSWORD}@db:5432/jomlah
+      HMAC_SECRET: ${HMAC_SECRET:?set HMAC_SECRET in .env}
+      PORT: "8080"
+    ports:
+      - "127.0.0.1:8080:8080"   # local only; Caddy publishes it over HTTPS
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    profiles: ["https"]
+    depends_on: [api]
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+
+volumes:
+  dbdata:
+  caddydata:

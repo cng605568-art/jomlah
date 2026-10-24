@@ -1,0 +1,19 @@
+.dart_tool/
+.packages
+build/
+pubspec.lock
+.idea/
+*.iml
+.DS_Store
+# generated in CI on first run; remove these two lines once you commit android/
+android/
+ios/
+# never commit signing keys
+*.jks
+*.keystore
+key.properties
+
+# backend secrets
+.env
+server/.env
+node_modules/

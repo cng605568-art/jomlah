@@ -1,0 +1,20 @@
+name: API tests
+
+on:
+  push:
+    paths: ['server/api/**', '.github/workflows/api-tests.yml']
+  pull_request:
+    paths: ['server/api/**']
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Unit tests (rules only, no database needed)
+        working-directory: server/api
+        run: node --test

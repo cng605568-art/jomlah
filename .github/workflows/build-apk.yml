@@ -1,0 +1,101 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:        # lets you press "Run workflow" from the GitHub app or site
+  push:
+    branches: [main]
+    tags: ['v*']            # pushing a tag like v0.1.0 also publishes a Release
+
+permissions:
+  contents: write           # needed to attach the APK to a Release
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      # The repo only holds our code. Android boilerplate is generated on first run.
+      - name: Generate Android platform files (first run only)
+        run: |
+          if [ ! -d android ]; then
+            flutter create --project-name jomlah --org my --platforms=android /tmp/scaffold
+            cp -r /tmp/scaffold/android ./android
+          fi
+
+      # Release builds have no INTERNET permission by default, so map tiles would fail.
+      # Android 11+ also needs a <queries> entry before an app can find the text-to-speech engine.
+      - name: Patch AndroidManifest (permissions, TTS query, app name)
+        run: |
+          python3 - <<'PY'
+          import re, pathlib
+          p = pathlib.Path('android/app/src/main/AndroidManifest.xml')
+          s = p.read_text()
+          if 'ACCESS_FINE_LOCATION' not in s:
+              perms = (
+                  '<uses-permission android:name="android.permission.INTERNET"/>\n'
+                  '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>\n'
+                  '    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>\n'
+                  '    <application'
+              )
+              s = s.replace('<application', perms, 1)
+          if 'TTS_SERVICE' not in s:
+              intent = (
+                  '<intent>\n'
+                  '            <action android:name="android.intent.action.TTS_SERVICE"/>\n'
+                  '        </intent>\n'
+              )
+              if '</queries>' in s:
+                  s = s.replace('</queries>', intent + '    </queries>', 1)
+              else:
+                  s = s.replace('</manifest>', '    <queries>\n        ' + intent + '    </queries>\n</manifest>', 1)
+          s = re.sub(r'android:label="[^"]*"', 'android:label="Jomlah"', s, count=1)
+          p.write_text(s)
+          PY
+
+      - run: flutter pub get
+
+      - name: Analyze (informational, does not block the build)
+        run: flutter analyze
+        continue-on-error: true
+
+      - name: Unit tests
+        run: flutter test
+
+      # Optional repo variables (Settings > Secrets and variables > Actions > Variables):
+      #   VALHALLA_URL  your own routing server   (unset = public demo server)
+      #   PHOTON_URL    your own search server    (unset = public Photon API)
+      #   API_URL       your reports backend      (unset = demo mode, fake alerts)
+      - name: Build release APK
+        run: >
+          flutter build apk --release
+          ${VALHALLA_URL:+--dart-define=VALHALLA_URL=$VALHALLA_URL}
+          ${PHOTON_URL:+--dart-define=PHOTON_URL=$PHOTON_URL}
+          ${API_URL:+--dart-define=API_URL=$API_URL}
+        env:
+          VALHALLA_URL: ${{ vars.VALHALLA_URL }}
+          PHOTON_URL: ${{ vars.PHOTON_URL }}
+          API_URL: ${{ vars.API_URL }}
+
+      - name: Upload APK as a build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: jomlah-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Attach APK to GitHub Release (tags only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/app/outputs/flutter-apk/app-release.apk

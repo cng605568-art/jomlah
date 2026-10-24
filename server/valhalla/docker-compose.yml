@@ -1,0 +1,17 @@
+# Your own routing server for Malaysia. First start downloads the map and builds the
+# routing graph (expect a while, and a few GB of RAM). Later starts are instant.
+services:
+  valhalla:
+    image: ghcr.io/gis-ops/docker-valhalla/valhalla:latest
+    container_name: valhalla_my
+    restart: unless-stopped
+    ports:
+      - "8002:8002"
+    volumes:
+      - ./custom_files:/custom_files
+    environment:
+      - tile_urls=https://download.geofabrik.de/asia/malaysia-singapore-brunei-latest.osm.pbf
+      - server_threads=4
+      - build_admins=True
+      - build_time_zones=True
+      - force_rebuild=False
