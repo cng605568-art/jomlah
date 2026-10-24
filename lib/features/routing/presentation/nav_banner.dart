@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../application/routing_providers.dart';
 
 const _lime = Color(0xFFC8FF3D);
@@ -72,6 +73,57 @@ class NavBanner extends ConsumerWidget {
     }
     if (nav.arrived) {
       return _Card(onClose: cancel, child: const Text('Sampai! 🎉 Terima kasih sebab Jomlah.'));
+    }
+
+    if (nav.previewing) {
+      final notifier = ref.read(routingProvider.notifier);
+      var fastest = 0;
+      for (var i = 1; i < nav.candidates.length; i++) {
+        if (nav.candidates[i].durationSec < nav.candidates[fastest].durationSec) fastest = i;
+      }
+      return _Card(
+        onClose: cancel,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Pilih laluan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                for (var i = 0; i < nav.candidates.length; i++)
+                  ChoiceChip(
+                    selected: i == nav.selected,
+                    onSelected: (_) => notifier.choose(i),
+                    label: Text(
+                      '${nav.candidates.length > 1 && i == fastest ? 'Terpantas · ' : ''}'
+                      '${(nav.candidates[i].durationSec / 60).ceil()} min · '
+                      '${nav.candidates[i].distanceKm.toStringAsFixed(1)} km',
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: FilledButton.icon(
+                onPressed: () async {
+                  // Android 13+ hides the "navigation active" notice unless allowed.
+                  try {
+                    await Permission.notification.request();
+                  } catch (_) {}
+                  notifier.begin();
+                },
+                icon: const Icon(Icons.navigation),
+                label: const Text('Jom!', style: TextStyle(fontSize: 18)),
+              ),
+            ),
+          ],
+        ),
+      );
     }
 
     final plan = nav.plan!;

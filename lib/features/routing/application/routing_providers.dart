@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import '../data/valhalla_client.dart';
 import '../domain/route_plan.dart';
+import 'route_prefs_provider.dart';
 
 final valhallaClientProvider =
     Provider<ValhallaClient>((ref) => ValhallaClient());
@@ -11,6 +12,10 @@ class NavState {
   const NavState({
     this.destination,
     this.plan,
+    this.candidates = const [],
+    this.selected = 0,
+    this.segment = 0,
+    this.previewing = false,
     this.loading = false,
     this.rerouting = false,
     this.error,
@@ -22,7 +27,11 @@ class NavState {
   });
 
   final LatLng? destination;
-  final RoutePlan? plan;
+  final RoutePlan? plan; // the chosen route
+  final List<RoutePlan> candidates; // options shown while previewing
+  final int selected;
+  final int segment; // index of the route segment the car is on
+  final bool previewing; // choosing a route, trip not started yet
   final bool loading;
   final bool rerouting;
   final String? error;
@@ -34,7 +43,14 @@ class NavState {
   /// Goes up by one on every completed automatic reroute.
   final int rerouteCount;
 
+  /// A trip is underway: voice, background tracking and keep-awake all key off this.
+  bool get navigating => plan != null && !previewing && !loading && !arrived;
+
   NavState copyWith({
+    RoutePlan? plan,
+    int? selected,
+    int? segment,
+    bool? previewing,
     bool? rerouting,
     Maneuver? next,
     double? distanceToNextM,
@@ -43,7 +59,11 @@ class NavState {
   }) =>
       NavState(
         destination: destination,
-        plan: plan,
+        plan: plan ?? this.plan,
+        candidates: candidates,
+        selected: selected ?? this.selected,
+        segment: segment ?? this.segment,
+        previewing: previewing ?? this.previewing,
         loading: loading,
         rerouting: rerouting ?? this.rerouting,
         error: error,
@@ -61,24 +81,59 @@ class RoutingNotifier extends Notifier<NavState> {
 
   int _seg = 0; // shape segment we are on; never moves backwards
   double _offRouteM = 0; // distance from the route at the last GPS fix
+  LatLng? _origin; // where the trip was planned from
   DateTime _lastReroute = DateTime.fromMillisecondsSinceEpoch(0);
 
   @override
   NavState build() => const NavState();
 
+  /// Plans the trip and shows the options. Nothing is spoken until [begin].
   Future<void> start(LatLng from, LatLng to) async {
     _seg = 0;
     _offRouteM = 0;
+    _origin = from;
     state = NavState(destination: to, loading: true);
     try {
-      final plan = await ref.read(valhallaClientProvider).route(from, to);
+      final routes = await ref.read(valhallaClientProvider).routes(
+            from,
+            to,
+            prefs: ref.read(routePrefsProvider),
+            alternates: 2,
+          );
       if (state.destination != to) return; // cancelled while waiting
-      state = _track(NavState(destination: to, plan: plan), from);
+      state = _track(
+        NavState(destination: to, plan: routes.first, candidates: routes, previewing: true),
+        from,
+      );
     } on RoutingException catch (e) {
       state = NavState(destination: to, error: e.message);
     } catch (_) {
       state = NavState(destination: to, error: 'Alamak, ada masalah. Cuba lagi.');
     }
+  }
+
+  /// Pick one of the previewed routes.
+  void choose(int i) {
+    final s = state;
+    final origin = _origin;
+    if (!s.previewing || origin == null || i < 0 || i >= s.candidates.length) return;
+    _seg = 0;
+    state = _track(
+      NavState(
+        destination: s.destination,
+        plan: s.candidates[i],
+        candidates: s.candidates,
+        selected: i,
+        previewing: true,
+      ),
+      origin,
+    );
+  }
+
+  /// "Jom!" Start the trip.
+  void begin() {
+    if (!state.previewing) return;
+    state = state.copyWith(previewing: false);
   }
 
   void cancel() {
@@ -89,7 +144,7 @@ class RoutingNotifier extends Notifier<NavState> {
   /// Call on every GPS fix.
   void onPosition(LatLng here) {
     final s = state;
-    if (s.plan == null || s.loading || s.arrived) return;
+    if (s.plan == null || s.loading || s.previewing || s.arrived) return;
     state = _track(s, here);
     final cooledDown = DateTime.now().difference(_lastReroute) > _rerouteCooldown;
     if (_offRouteM > _offRouteThresholdM && !s.rerouting && cooledDown) {
@@ -117,13 +172,17 @@ class RoutingNotifier extends Notifier<NavState> {
     _lastReroute = DateTime.now();
     state = state.copyWith(rerouting: true);
     try {
-      final plan = await ref.read(valhallaClientProvider).route(here, dest);
+      final routes = await ref.read(valhallaClientProvider).routes(
+            here,
+            dest,
+            prefs: ref.read(routePrefsProvider),
+          );
       if (state.destination != dest) return; // cancelled while waiting
       _seg = 0;
       state = _track(
         NavState(
           destination: dest,
-          plan: plan,
+          plan: routes.first,
           rerouteCount: state.rerouteCount + 1,
         ),
         here,
@@ -166,10 +225,11 @@ class RoutingNotifier extends Notifier<NavState> {
     final nextAt = cum[math.min(next.beginIndex, cum.length - 1)];
 
     return s.copyWith(
+      segment: bestSeg,
       next: next,
       distanceToNextM: math.max(0.0, nextAt - along),
       remainingM: remaining,
-      arrived: remaining < 30 && bestD < _offRouteThresholdM,
+      arrived: !s.previewing && remaining < 30 && bestD < _offRouteThresholdM,
     );
   }
 }

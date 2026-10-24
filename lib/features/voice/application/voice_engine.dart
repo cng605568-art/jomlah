@@ -25,22 +25,24 @@ class VoiceEngine {
 
   /// Call on every navigation state change (every GPS fix while navigating).
   void onNav(NavState? prev, NavState next) {
-    if (next.plan == null) {
-      if (prev?.plan != null) {
+    // "Underway" means a route exists and the driver has pressed Jom! (not just previewing).
+    bool underway(NavState? s) => s != null && s.plan != null && !s.previewing;
+    final wasUnderway = underway(prev);
+
+    if (!underway(next)) {
+      if (wasUnderway) {
         _announced.clear();
         _alerted.clear();
       }
       return;
     }
 
-    final newPlan = !identical(prev?.plan, next.plan);
-    if (newPlan) {
+    if (!wasUnderway) {
       _announced.clear();
-      if (prev?.plan == null) {
-        _say(Cue.start, priority: 3);
-        return; // let "route ready" finish before the first turn cue
-      }
+      _say(Cue.start, priority: 3);
+      return; // let "route ready" finish before the first turn cue
     }
+    if (!identical(prev?.plan, next.plan)) _announced.clear(); // rerouted
 
     if (!(prev?.rerouting ?? false) && next.rerouting) {
       _say(Cue.recalculating, priority: 3);

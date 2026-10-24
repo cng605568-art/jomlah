@@ -71,7 +71,7 @@ final voiceEngineProvider = Provider<VoiceEngine>((ref) {
       // Road alerts: only while navigating and moving (>7 km/h), within 500 m,
       // roughly in front of us, and near our route (not on a parallel road).
       final nav = ref.read(routingProvider);
-      if (nav.plan == null || nav.arrived || pos.speed < 2) return;
+      if (!nav.navigating || pos.speed < 2) return;
       final here = LatLng(pos.latitude, pos.longitude);
       for (final r in ref.read(reportsProvider).reports) {
         final cue = _alertCues[r.type];

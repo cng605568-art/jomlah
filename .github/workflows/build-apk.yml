@@ -35,6 +35,7 @@ jobs:
           fi
 
       # Release builds have no INTERNET permission by default, so map tiles would fail.
+      # The foreground-service permissions keep navigation alive with the screen off.
       # Android 11+ also needs a <queries> entry before an app can find the text-to-speech engine.
       - name: Patch AndroidManifest (permissions, TTS query, app name)
         run: |
@@ -42,14 +43,18 @@ jobs:
           import re, pathlib
           p = pathlib.Path('android/app/src/main/AndroidManifest.xml')
           s = p.read_text()
-          if 'ACCESS_FINE_LOCATION' not in s:
-              perms = (
-                  '<uses-permission android:name="android.permission.INTERNET"/>\n'
-                  '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>\n'
-                  '    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>\n'
-                  '    <application'
+          needed = [
+              'INTERNET', 'ACCESS_FINE_LOCATION', 'ACCESS_COARSE_LOCATION',
+              'FOREGROUND_SERVICE', 'FOREGROUND_SERVICE_LOCATION',
+              'POST_NOTIFICATIONS', 'WAKE_LOCK',
+          ]
+          missing = [n for n in needed if 'android.permission.' + n + '"' not in s]
+          if missing:
+              block = ''.join(
+                  '<uses-permission android:name="android.permission.' + n + '"/>\n    '
+                  for n in missing
               )
-              s = s.replace('<application', perms, 1)
+              s = s.replace('<application', block + '<application', 1)
           if 'TTS_SERVICE' not in s:
               intent = (
                   '<intent>\n'
@@ -83,10 +88,13 @@ jobs:
           ${VALHALLA_URL:+--dart-define=VALHALLA_URL=$VALHALLA_URL}
           ${PHOTON_URL:+--dart-define=PHOTON_URL=$PHOTON_URL}
           ${API_URL:+--dart-define=API_URL=$API_URL}
+          --dart-define=FEEDBACK_URL=https://github.com/$REPO/issues
+          --dart-define=PRIVACY_URL=https://github.com/$REPO/blob/main/PRIVACY.md
         env:
           VALHALLA_URL: ${{ vars.VALHALLA_URL }}
           PHOTON_URL: ${{ vars.PHOTON_URL }}
           API_URL: ${{ vars.API_URL }}
+          REPO: ${{ github.repository }}
 
       - name: Upload APK as a build artifact
         uses: actions/upload-artifact@v4

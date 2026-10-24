@@ -1,28 +1,53 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import '../../../core/app_info.dart';
 import '../../../core/device_id.dart';
 import '../../../core/prefs.dart';
+import '../../routing/application/routing_providers.dart';
 import '../data/http_report_repository.dart';
 import '../data/report_repository.dart';
 import '../domain/report.dart';
 
-/// Set with: flutter build apk --dart-define=API_URL=https://api.yourdomain.my
-/// Empty = demo mode with a few fake alerts kept in memory.
-const _apiUrl = String.fromEnvironment('API_URL');
-
 final reportRepositoryProvider = Provider<ReportRepository>((ref) {
-  if (_apiUrl.isEmpty) return MockReportRepository();
+  if (kDemoMode) return MockReportRepository(); // no API_URL: fake alerts in memory
   final prefs = ref.read(sharedPrefsProvider);
   return HttpReportRepository(
-    baseUrl: _apiUrl,
+    baseUrl: kApiUrl,
     deviceId: () => currentDeviceId(prefs),
   );
 });
 
+LocationSettings _locationSettings({required bool navigating}) {
+  if (defaultTargetPlatform == TargetPlatform.android) {
+    return AndroidSettings(
+      accuracy: LocationAccuracy.bestForNavigation,
+      distanceFilter: navigating ? 0 : 5, // metres; 0 = a fix every interval while driving
+      intervalDuration: const Duration(seconds: 1),
+      // While a trip is running, Android keeps us alive with a notification, so directions
+      // and voice keep working with the screen off or another app on top.
+      foregroundNotificationConfig: navigating
+          ? const ForegroundNotificationConfig(
+              notificationTitle: 'Jomlah sedang memandu anda',
+              notificationText: 'Navigasi aktif. Ketik untuk kembali ke app.',
+              notificationChannelName: 'Navigasi',
+              enableWakeLock: true,
+            )
+          : null,
+    );
+  }
+  return const LocationSettings(
+    accuracy: LocationAccuracy.bestForNavigation,
+    distanceFilter: 5,
+  );
+}
+
 /// Live GPS stream. Asks for permission once, surfaces failures as AsyncError.
+/// Restarts (briefly) when a trip starts or ends so the background service matches.
 final locationProvider = StreamProvider<Position>((ref) async* {
+  final navigating = ref.watch(routingProvider.select((s) => s.navigating));
   var perm = await Geolocator.checkPermission();
   if (perm == LocationPermission.denied) {
     perm = await Geolocator.requestPermission();
@@ -32,10 +57,7 @@ final locationProvider = StreamProvider<Position>((ref) async* {
     throw Exception('Location permission denied');
   }
   yield* Geolocator.getPositionStream(
-    locationSettings: const LocationSettings(
-      accuracy: LocationAccuracy.bestForNavigation,
-      distanceFilter: 5, // metres
-    ),
+    locationSettings: _locationSettings(navigating: navigating),
   );
 });
 

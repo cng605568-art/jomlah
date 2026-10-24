@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import '../domain/route_plan.dart';
+import '../domain/route_prefs.dart';
 import 'polyline.dart';
 
 const _envUrl = String.fromEnvironment('VALHALLA_URL');
@@ -26,7 +27,13 @@ class ValhallaClient {
   final http.Client _http;
   final String _base;
 
-  Future<RoutePlan> route(LatLng from, LatLng to) async {
+  /// Best route first, then up to [alternates] alternatives. Valhalla may return fewer.
+  Future<List<RoutePlan>> routes(
+    LatLng from,
+    LatLng to, {
+    RoutePrefs prefs = const RoutePrefs(),
+    int alternates = 0,
+  }) async {
     final http.Response res;
     try {
       res = await _http
@@ -41,8 +48,10 @@ class ValhallaClient {
                 {'lat': from.latitude, 'lon': from.longitude},
                 {'lat': to.latitude, 'lon': to.longitude},
               ],
-              'costing': 'auto',
+              'costing': prefs.vehicle.costing,
+              'costing_options': prefs.costingOptions,
               'directions_options': {'units': 'kilometers', 'language': 'en-US'},
+              if (alternates > 0) 'alternates': alternates,
             }),
           )
           .timeout(const Duration(seconds: 15));
@@ -59,19 +68,33 @@ class ValhallaClient {
       throw RoutingException(msg);
     }
 
-    final trip = (jsonDecode(res.body) as Map<String, dynamic>)['trip']
-        as Map<String, dynamic>;
-    final leg = (trip['legs'] as List).first as Map<String, dynamic>;
-    final summary = trip['summary'] as Map<String, dynamic>;
-
-    return RoutePlan(
-      shape: decodePolyline(leg['shape'] as String),
-      maneuvers: [
-        for (final m in leg['maneuvers'] as List)
-          Maneuver.fromJson(m as Map<String, dynamic>),
-      ],
-      distanceKm: (summary['length'] as num).toDouble(),
-      durationSec: (summary['time'] as num).toDouble(),
-    );
+    final plans = parseValhallaRoutes(utf8.decode(res.bodyBytes));
+    if (plans.isEmpty) throw RoutingException('Tak jumpa laluan.');
+    return plans;
   }
+}
+
+/// Main route first, then any alternates.
+List<RoutePlan> parseValhallaRoutes(String body) {
+  final json = jsonDecode(body) as Map<String, dynamic>;
+  final trips = <Map<String, dynamic>>[
+    json['trip'] as Map<String, dynamic>,
+    for (final a in (json['alternates'] as List? ?? const []))
+      if (a is Map<String, dynamic>) (a['trip'] as Map<String, dynamic>?) ?? a,
+  ];
+  return [for (final t in trips) _planFromTrip(t)];
+}
+
+RoutePlan _planFromTrip(Map<String, dynamic> trip) {
+  final leg = (trip['legs'] as List).first as Map<String, dynamic>;
+  final summary = trip['summary'] as Map<String, dynamic>;
+  return RoutePlan(
+    shape: decodePolyline(leg['shape'] as String),
+    maneuvers: [
+      for (final m in leg['maneuvers'] as List)
+        Maneuver.fromJson(m as Map<String, dynamic>),
+    ],
+    distanceKm: (summary['length'] as num).toDouble(),
+    durationSec: (summary['time'] as num).toDouble(),
+  );
 }

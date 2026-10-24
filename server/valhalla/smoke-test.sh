@@ -11,3 +11,12 @@ curl -s -X POST "$URL/route" -H 'Content-Type: application/json' -d '{
 }' | head -c 1500; echo
 # Lane check for later: run SPE / SUKE / Federal Highway routes and look at the maneuver
 # JSON for lane information. If it is absent, that is an OSM data gap to fix (Lorong Squad).
+
+echo "--- lane data? (counts of the word lanes in the response; 0 means none)"
+PLAIN=$(curl -s -X POST "$URL/route" -H 'Content-Type: application/json' -d '{
+  "locations": [{"lat": 3.1579, "lon": 101.7116}, {"lat": 2.9264, "lon": 101.6964}],
+  "costing": "auto"}' | grep -o '"lanes"' | wc -l)
+WITH=$(curl -s -X POST "$URL/route" -H 'Content-Type: application/json' -d '{
+  "locations": [{"lat": 3.1579, "lon": 101.7116}, {"lat": 2.9264, "lon": 101.6964}],
+  "costing": "auto", "directions_options": {"turn_lanes": true}}' | grep -o '"lanes"' | wc -l)
+echo "default request: $PLAIN | with turn_lanes option: $WITH"

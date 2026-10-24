@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:latlong2/latlong.dart';
 import '../../../core/geo.dart';
 
@@ -55,4 +56,12 @@ class RoutePlan {
     }
     return out;
   }
+}
+
+/// The part of the route still ahead of the car, starting at [from] (the car) when given.
+/// [segment] is the shape segment the car is on, so earlier points are dropped.
+List<LatLng> remainingShape(List<LatLng> shape, int segment, {LatLng? from}) {
+  if (shape.isEmpty) return const [];
+  final start = math.min(math.max(segment + 1, 0), shape.length - 1);
+  return [if (from != null) from, ...shape.sublist(start)];
 }
