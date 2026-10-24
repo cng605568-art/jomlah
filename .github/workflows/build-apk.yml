@@ -14,9 +14,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -82,19 +82,88 @@ jobs:
       #   VALHALLA_URL  your own routing server   (unset = public demo server)
       #   PHOTON_URL    your own search server    (unset = public Photon API)
       #   API_URL       your reports backend      (unset = demo mode, fake alerts)
+      #
+      # Why this step is longer than one command: pubspec.lock is not committed, so every run
+      # pulls the newest plugin versions, and those pull in the newest AndroidX libraries.
+      # AndroidX raises its minimum compileSdk faster than Flutter's template does, and then
+      # Gradle stops at :app:checkReleaseAarMetadata with "...compile against version N or later".
+      # Gradle names the exact N, so we read it, set compileSdk to it, and build once more.
+      # If the build still fails, the Gradle "What went wrong" text is added to the run summary
+      # as an error annotation, so you do not have to dig through the full log.
       - name: Build release APK
-        run: >
-          flutter build apk --release
-          ${VALHALLA_URL:+--dart-define=VALHALLA_URL=$VALHALLA_URL}
-          ${PHOTON_URL:+--dart-define=PHOTON_URL=$PHOTON_URL}
-          ${API_URL:+--dart-define=API_URL=$API_URL}
-          --dart-define=FEEDBACK_URL=https://github.com/$REPO/issues
-          --dart-define=PRIVACY_URL=https://github.com/$REPO/blob/main/PRIVACY.md
+        shell: bash
         env:
           VALHALLA_URL: ${{ vars.VALHALLA_URL }}
           PHOTON_URL: ${{ vars.PHOTON_URL }}
           API_URL: ${{ vars.API_URL }}
           REPO: ${{ github.repository }}
+        run: |
+          args=(--release)
+          if [ -n "$VALHALLA_URL" ]; then args+=("--dart-define=VALHALLA_URL=$VALHALLA_URL"); fi
+          if [ -n "$PHOTON_URL" ]; then args+=("--dart-define=PHOTON_URL=$PHOTON_URL"); fi
+          if [ -n "$API_URL" ]; then args+=("--dart-define=API_URL=$API_URL"); fi
+          args+=("--dart-define=FEEDBACK_URL=https://github.com/$REPO/issues")
+          args+=("--dart-define=PRIVACY_URL=https://github.com/$REPO/blob/main/PRIVACY.md")
+
+          build() { flutter build apk "${args[@]}" 2>&1 | tee build.log; }
+
+          report_failure() {
+            msg=$(awk '/^\* What went wrong:/{f=1;next} /^\* Try:/{f=0} f' build.log \
+                  | head -n 15 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+            echo "::error title=Gradle build failed::${msg:-No Gradle summary found, see the log above.}"
+            exit 1
+          }
+
+          if build; then exit 0; fi
+
+          if python3 - <<'PY'
+          import pathlib, re, sys
+
+          # Gradle wraps long messages across lines, so flatten whitespace before matching.
+          log = re.sub(r'\s+', ' ', pathlib.Path('build.log').read_text(errors='replace'))
+          wanted = re.findall(r'compile against version (\d+(?:\.\d+)?)', log)
+          if not wanted:
+              print('Build failed for another reason (no compileSdk request found).')
+              sys.exit(1)
+          need = max(wanted, key=lambda v: [int(x) for x in v.split('.')])
+
+          changed = False
+          for name in ('android/app/build.gradle.kts', 'android/app/build.gradle'):
+              p = pathlib.Path(name)
+              if not p.exists():
+                  continue
+              old = p.read_text()
+              if '.' not in need:
+                  value = 'compileSdk = ' + need
+              elif name.endswith('.kts'):      # a point release such as 36.1 needs the platform name
+                  value = 'compileSdkVersion("android-%s")' % need
+              else:
+                  value = 'compileSdkVersion "android-%s"' % need
+              new = re.sub(
+                  r'(?m)^([ \t]*)compileSdk(?:Version)?\b[ \t]*=?[ \t]*\S.*$',
+                  lambda m: m.group(1) + value,
+                  old, count=1,
+              )
+              if new != old:
+                  p.write_text(new)
+                  changed = True
+                  print('Set %s in %s' % (value, name))
+
+          # AGP only warns when compileSdk is newer than it was tested with; this silences it.
+          props = pathlib.Path('android/gradle.properties')
+          line = 'android.suppressUnsupportedCompileSdk=' + need
+          text = props.read_text() if props.exists() else ''
+          if line not in text:
+              props.write_text(text.rstrip('\n') + '\n' + line + '\n')
+
+          sys.exit(0 if changed else 1)
+          PY
+          then
+            echo "::warning title=compileSdk raised::A dependency needs a newer compileSdk. Retrying the build with it."
+            if build; then exit 0; fi
+          fi
+
+          report_failure
 
       - name: Upload APK as a build artifact
         uses: actions/upload-artifact@v4
