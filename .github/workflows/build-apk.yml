@@ -34,6 +34,12 @@ jobs:
             cp -r /tmp/scaffold/android ./android
           fi
 
+      # Our launcher icon (adaptive icon for Android 8+, rounded square for older phones).
+      # android/ is generated, so the icon files live in branding/icon-res and are copied over
+      # Flutter's default icon on every run. The manifest already points at @mipmap/ic_launcher.
+      - name: Install app icon
+        run: cp -r branding/icon-res/. android/app/src/main/res/
+
       # Release builds have no INTERNET permission by default, so map tiles would fail.
       # The foreground-service permissions keep navigation alive with the screen off.
       # Android 11+ also needs a <queries> entry before an app can find the text-to-speech engine.

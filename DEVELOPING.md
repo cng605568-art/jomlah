@@ -124,3 +124,13 @@ The download page therefore asks the GitHub API for the newest release of any ki
 `.apk` attached to it. The README links to the Releases list for the same reason. If you mark a
 release as a normal (not pre-release) release, `/releases/latest/download/app-release.apk` also works.
 Do not put tag names with brackets, like `v1.0.0(BETA)`, in Markdown links: write `%28BETA%29`.
+
+## App icon
+`branding/icon-res/` holds the ready-made Android launcher icon: an adaptive icon for Android 8+
+(`drawable-*/ic_launcher_foreground.png` over `drawable-nodpi/ic_launcher_background.png`, tied
+together by `mipmap-anydpi-v26/ic_launcher.xml`) and rounded-square `mipmap-*/ic_launcher.png` files for
+older phones. Because `android/` is generated on every build, the workflow step **Install app icon**
+copies these over Flutter's default icon each time. The folder is named `branding` on purpose:
+`.gitignore` skips any folder called `android/`.
+`branding/icon-1024.png` is a full-size square copy for store listings, and `branding/icon-original.png`
+is the artwork as first drawn. To change the icon, replace the files in `icon-res` (keep the same names).
