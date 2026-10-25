@@ -110,3 +110,17 @@ the "lanes" lines. If lane data shows up, the UI can be built against the real J
   Long-press a shortcut to remove it. Everything is stored on the phone only (SharedPreferences).
 - If GPS is off or permission was refused, a banner at the top explains it and opens the right
   settings screen, with a "Cuba lagi" button to retry.
+
+## Download page (GitHub Pages)
+`docs/index.html` is a large-text install guide in Bahasa Melayu, English and Chinese for people who
+are not used to installing apps outside Google Play. To publish it (free, repository must be public):
+Settings > Pages > Build and deployment > Deploy from a branch > `main` and folder `/docs` > Save.
+The page appears at `https://<your-username>.github.io/<repo-name>/` after a minute or two. Its links
+find the repository from that address, so they keep working if you rename or fork it.
+
+## Release links and pre-releases
+GitHub's `/releases/latest` link skips anything marked **Pre-release**, so it will not find a beta.
+The download page therefore asks the GitHub API for the newest release of any kind and uses the
+`.apk` attached to it. The README links to the Releases list for the same reason. If you mark a
+release as a normal (not pre-release) release, `/releases/latest/download/app-release.apk` also works.
+Do not put tag names with brackets, like `v1.0.0(BETA)`, in Markdown links: write `%28BETA%29`.

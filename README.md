@@ -1,14 +1,27 @@
 # Jomlah 🚗
 
-A free navigation app built in Malaysia, now in **beta**. Turn-by-turn routes, voice packs
-(Mamak Boss, Sarcastic KL-ite, or Serious), and driver alerts for police, floods, potholes and more.
+**A free navigation app built in Malaysia, now in beta.** Turn-by-turn routes for cars and
+motorcycles, route options, three voice packs (Mamak Boss, Sarcastic KL-ite, or Serious), driver
+alerts for police, floods, potholes and more, and saved Home and Work shortcuts.
 No account. No ads.
 
 *Aplikasi navigasi percuma buatan Malaysia. Versi beta. Tiada akaun, tiada iklan.*
 
+## About
+
+Jomlah is an independent project made with Flutter and OpenStreetMap data. It aims to be a
+navigation app that feels Malaysian (local place names, Manglish voices, alerts for the things we
+actually meet on the road) and respects your privacy: no login, no ads, no analytics, and your
+trips are not stored.
+
+It is an early beta. Some parts are real and some are still samples, and the lists below are
+honest about which is which.
+
 ## Download (Android only)
 
-**[Get the latest beta](../../releases/latest)**, then download `app-release.apk`.
+**[Open the Releases page](../../releases)**, pick the newest version, and under **Assets** download `app-release.apk`.
+
+Or use the large-text install page: **https://cng605568-art.github.io/jomlah/**
 
 1. Open the downloaded file on your phone.
 2. If Android asks, allow **Install unknown apps** for the app you downloaded it with.
@@ -17,6 +30,12 @@ No account. No ads.
 4. Open Jomlah, read the welcome screen, and allow location **while using the app**.
 
 Only download from this page. Do not install copies from anywhere else.
+
+### Helping a parent or grandparent install it
+
+There is a large-text download page in Bahasa Melayu, English and Chinese:
+**https://cng605568-art.github.io/jomlah/**. Open it on their phone, or print the address and
+sit with them for the five steps. Only install apps from links you trust.
 
 ## What works
 
