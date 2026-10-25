@@ -9,7 +9,7 @@ No account. No ads.
 
 ## About
 
-Jomlah is an independent project made with Flutter and OpenStreetMap data. It aims to be a
+Jomlah is a student-built project made with Flutter and OpenStreetMap data. It aims to be a
 navigation app that feels Malaysian (local place names, Manglish voices, alerts for the things we
 actually meet on the road) and respects your privacy: no login, no ads, no analytics, and your
 trips are not stored.
