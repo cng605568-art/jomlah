@@ -134,3 +134,34 @@ copies these over Flutter's default icon each time. The folder is named `brandin
 `.gitignore` skips any folder called `android/`.
 `branding/icon-1024.png` is a full-size square copy for store listings, and `branding/icon-original.png`
 is the artwork as first drawn. To change the icon, replace the files in `icon-res` (keep the same names).
+
+## Step 8: smooth car movement and better GPS
+Raw GPS arrives about once a second and is noisy, so drawing it directly makes the car jump. The map
+screen now runs every fix through a pipeline:
+
+1. **Junk filter and Kalman filter** (`map/domain/gps_filter.dart`). Ignores fixes with accuracy worse
+   than 35 m (but gives up ignoring after 5 in a row, for tunnels) and "teleports" faster than 70 m/s.
+   The Kalman filter tracks position and velocity and also uses the phone's own speed and heading, so it
+   smooths jitter without trailing behind. Standing still is treated as a measurement too.
+2. **Snap to road** (`RoutingNotifier.snap`). While navigating and within 30 m of the route, the position
+   is pulled onto the route and the car faces along the road.
+3. **Animation** (`map/domain/car_motion.dart`). A frame ticker moves the car along its velocity between
+   fixes (up to 2.5 s) and eases towards each new fix (about 0.2 s), so there are no jumps. Heading turns
+   the short way round. Only the car's own layer redraws each frame.
+
+The camera follows the animated car and keeps the zoom you chose. Two-finger rotation is disabled so the
+map stays north-up.
+
+Tuning knobs: `maxAccuracyM`, `maxSpeedMps` and `accelNoise` in `GpsFilter`; the 30 m snap distance in
+`RoutingNotifier.snap`; the 2.5 s, 0.2 s and 0.3 s constants in `CarMotion`.
+The tests in `test/gps_filter_test.dart` and `test/snap_test.dart` cover each stage.
+
+## Step 9: heading-up map
+While a trip is running and the camera is following the car, `MapScreen._onFrame` calls
+`moveAndRotate(lookAhead(car, heading, 22% of the screen height in metres), zoom, -heading)`. The map
+turns so the direction of travel is up and the car sits in the lower part of the screen. Markers use
+`rotate: true` so they stay upright, and the car icon is drawn with heading 0 because the map itself
+is doing the turning. Dragging the map, or ending the trip, resets the rotation to north-up.
+The sign of the rotation (`-heading`) follows flutter_map's "0 is north" convention; if the map ever
+spins the wrong way on a device, flip it in one place (`_onFrame`).
+Settings > "Arah peta semasa memandu" switches between Ikut arah (heading-up) and Utara ke atas.

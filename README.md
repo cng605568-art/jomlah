@@ -43,6 +43,8 @@ sit with them for the five steps. Only install apps from links you trust.
 - Car or motorcycle routes, and an option to avoid tolls where possible
 - Saved Home and Work shortcuts, plus your recent destinations
 - Turn-by-turn with next-turn card, automatic reroute, current speed, and night map
+- A car that glides smoothly along the road instead of jumping between GPS readings
+- The map turns with your direction while you drive, with the road ahead in view (switch to north-up in Settings)
 - Spoken directions in three voices (install your phone's Malay text-to-speech voice for Mamak Boss)
 - Keeps navigating with the screen off or another app open (Android shows a "navigation active"
   notification; on Android 13 and newer, allow notifications so you can see it)
@@ -54,12 +56,21 @@ sit with them for the five steps. Only install apps from links you trust.
 - No live traffic, no lane guidance, no offline maps, no CarPlay or Android Auto
 - It can be wrong, especially at complex junctions. Road signs and the law come first
 - If you swipe the app away from recent apps, navigation stops
+- When the map turns, street names turn with it, because the map pictures are rotated as a whole
 
 ## If the location stops updating
 
 Some phones stop apps from running while the screen is off. In Android Settings, open Apps, then
 Jomlah, then Battery, and choose **Unrestricted** (or "No restrictions"). Also allow notifications
 for Jomlah, and press **Jom!** with the app open so the navigation service can start.
+
+### If the car still jumps or drifts
+
+GPS accuracy depends on your phone and the sky. Turn on high-accuracy location in Android's location
+settings (it may be called "Google Location Accuracy"), turn off battery saver, and keep the phone
+where it can see the sky, for example on a dashboard mount rather than in a bag. Tall buildings and
+tunnels will still confuse any GPS app. Jomlah ignores obviously bad readings and snaps the car onto
+the road you are following, but it cannot invent a signal your phone does not have.
 
 ## Stay safe
 

@@ -1,12 +1,21 @@
 import 'dart:math' as math;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
+import '../../../core/geo.dart';
 import '../data/valhalla_client.dart';
 import '../domain/route_plan.dart';
 import 'route_prefs_provider.dart';
 
 final valhallaClientProvider =
     Provider<ValhallaClient>((ref) => ValhallaClient());
+
+/// The car's position pulled onto the road we are following.
+class RouteSnap {
+  const RouteSnap({required this.point, required this.bearingDeg, required this.distanceM});
+  final LatLng point;
+  final double bearingDeg; // direction of travel along the road here
+  final double distanceM; // how far the GPS position was from the road
+}
 
 class NavState {
   const NavState({
@@ -150,6 +159,38 @@ class RoutingNotifier extends Notifier<NavState> {
     if (_offRouteM > _offRouteThresholdM && !s.rerouting && cooledDown) {
       _reroute(here);
     }
+  }
+
+  /// Pulls [p] onto the route when it is within [maxDistanceM] of it (GPS drifts a few metres, roads do
+  /// not). Returns null when not navigating or when the car is clearly somewhere else.
+  RouteSnap? snap(LatLng p, {double maxDistanceM = 30}) {
+    final plan = state.plan;
+    if (!state.navigating || plan == null || plan.shape.length < 2) return null;
+    final shape = plan.shape;
+    final first = math.min(_seg, shape.length - 2);
+    final last = math.min(shape.length - 2, _seg + 40); // only look just ahead
+    var bestD = double.infinity;
+    var bestI = first;
+    var bestT = 0.0;
+    for (var i = first; i <= last; i++) {
+      final r = _project(p, shape[i], shape[i + 1]);
+      if (r.dist < bestD) {
+        bestD = r.dist;
+        bestI = i;
+        bestT = r.t;
+      }
+    }
+    if (bestD > maxDistanceM) return null;
+    final a = shape[bestI];
+    final b = shape[bestI + 1];
+    return RouteSnap(
+      point: LatLng(
+        a.latitude + bestT * (b.latitude - a.latitude),
+        a.longitude + bestT * (b.longitude - a.longitude),
+      ),
+      bearingDeg: bearingDeg(a, b),
+      distanceM: bestD,
+    );
   }
 
   /// Metres from [p] to the part of the route still ahead of us, or null with no route.

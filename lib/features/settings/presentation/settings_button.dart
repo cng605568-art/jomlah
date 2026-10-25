@@ -37,6 +37,7 @@ class SettingsButton extends ConsumerWidget {
           final prefs = ref.watch(routePrefsProvider);
           final prefsCtl = ref.read(routePrefsProvider.notifier);
           final night = ref.watch(nightModeProvider);
+          final orientation = ref.watch(mapOrientationProvider);
 
           return ConstrainedBox(
             constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.85),
@@ -68,6 +69,19 @@ class SettingsButton extends ConsumerWidget {
                       padding: EdgeInsets.symmetric(horizontal: 16),
                       child: Text('Berkuat kuasa pada laluan seterusnya.',
                           style: TextStyle(fontSize: 12, color: Colors.white70)),
+                    ),
+                    const _Heading('Arah peta semasa memandu'),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: SegmentedButton<MapOrientation>(
+                        segments: [
+                          for (final m in MapOrientation.values)
+                            ButtonSegment(value: m, label: Text(m.label)),
+                        ],
+                        selected: {orientation},
+                        onSelectionChanged: (s) =>
+                            ref.read(mapOrientationProvider.notifier).set(s.first),
+                      ),
                     ),
                     const _Heading('Peta malam'),
                     Padding(

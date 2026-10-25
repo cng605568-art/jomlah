@@ -26,3 +26,20 @@ double bearingDeg(LatLng a, LatLng b) {
       math.sin(lat1) * math.cos(lat2) * math.cos(dLng);
   return (math.atan2(y, x) * 180 / math.pi + 360) % 360;
 }
+
+/// The point [eastM] metres east and [northM] metres north of [p] (flat-earth, fine at street scale).
+LatLng offsetM(LatLng p, double eastM, double northM) {
+  const mPerDegLat = 111320.0;
+  final mPerDegLng = mPerDegLat * math.cos(_rad(p.latitude));
+  return LatLng(p.latitude + northM / mPerDegLat, p.longitude + eastM / mPerDegLng);
+}
+
+/// Ground distance covered by one logical pixel on a standard 256 px web-mercator map.
+double metersPerPixel(double zoom, double latitude) =>
+    156543.03392 * math.cos(_rad(latitude)) / math.pow(2, zoom);
+
+/// The point [metres] ahead of [p] when travelling in direction [headingDeg].
+LatLng lookAhead(LatLng p, double headingDeg, double metres) {
+  final h = _rad(headingDeg);
+  return offsetM(p, metres * math.sin(h), metres * math.cos(h));
+}
