@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jomlah: Muat turun / Download / 下载</title>
+<meta name="description" content="Jomlah, free navigation app built in Malaysia (beta). Download for Android.">
+<style>
+  :root {
+    --bg: #fff8ee; --card: #ffffff; --ink: #1b1f3b; --muted: #4a4f6b;
+    --accent: #c8ff3d; --accent-ink: #1b1f3b; --line: #d9d3c7; --warn: #fff0c2;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1224; --card: #171c36; --ink: #f4f6ff; --muted: #b9bfdc;
+      --accent: #c8ff3d; --accent-ink: #0e1224; --line: #2c3358; --warn: #3a3414;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { font-size: 20px; }
+  body {
+    margin: 0; padding: 16px; background: var(--bg); color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Noto Sans SC", sans-serif;
+    line-height: 1.5;
+  }
+  main { max-width: 640px; margin: 0 auto; }
+  h1 { font-size: 2.2rem; margin: 8px 0 0; }
+  h2 { font-size: 1.3rem; margin: 28px 0 8px; }
+  .tag { margin: 0 0 16px; color: var(--muted); }
+  .langs { display: flex; gap: 8px; margin: 12px 0 8px; }
+  .langs button {
+    flex: 1; min-height: 52px; font: inherit; font-weight: 700; color: var(--ink);
+    background: var(--card); border: 2px solid var(--line); border-radius: 14px;
+  }
+  .langs button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+  .download {
+    display: block; text-align: center; text-decoration: none; font-weight: 800; font-size: 1.3rem;
+    padding: 20px 16px; min-height: 72px; border-radius: 18px;
+    background: var(--accent); color: var(--accent-ink); margin: 12px 0;
+  }
+  ol { padding: 0; margin: 0; list-style: none; counter-reset: step; }
+  ol li {
+    counter-increment: step; position: relative; background: var(--card);
+    border: 1px solid var(--line); border-radius: 16px; padding: 14px 14px 14px 64px; margin: 10px 0;
+  }
+  ol li::before {
+    content: counter(step); position: absolute; left: 14px; top: 12px; width: 38px; height: 38px;
+    border-radius: 50%; background: var(--accent); color: var(--accent-ink);
+    font-weight: 800; display: grid; place-items: center;
+  }
+  .ver { text-align: center; color: var(--muted); margin: 0 0 8px; font-size: 0.85rem; }
+  .box { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; margin: 12px 0; }
+  .warn { background: var(--warn); }
+  footer { margin: 28px 0 12px; color: var(--muted); font-size: 0.85rem; }
+  footer a { color: inherit; }
+  .js section[data-lang]:not(.active) { display: none; }
+  section[data-lang] + section[data-lang] { margin-top: 36px; border-top: 2px solid var(--line); padding-top: 12px; }
+  .js section[data-lang] + section[data-lang] { margin-top: 0; border-top: 0; padding-top: 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Jomlah 🚗</h1>
+
+  <div class="langs" role="group" aria-label="Language / Bahasa / 语言">
+    <button type="button" data-set="ms">Bahasa Melayu</button>
+    <button type="button" data-set="en">English</button>
+    <button type="button" data-set="zh">中文</button>
+  </div>
+
+  <section data-lang="ms" lang="ms">
+    <p class="tag">Navigasi percuma buatan Malaysia. Versi beta untuk Android. Tiada akaun, tiada iklan.</p>
+    <a class="download" data-apk href="https://github.com/cng605568-art/jomlah/releases">⬇ Muat turun untuk Android</a>
+    <p class="ver" hidden></p>
+    <h2>Cara pasang (5 langkah)</h2>
+    <ol>
+      <li>Tekan butang hijau di atas. Tunggu fail siap dimuat turun.</li>
+      <li>Buka fail itu. Ketik pada notifikasi, atau cari dalam app “Fail”.</li>
+      <li>Kalau telefon tanya tentang “sumber tidak dikenali”: tekan “Tetapan”, hidupkan “Benarkan”, kemudian tekan butang kembali.</li>
+      <li>Kalau keluar amaran Play Protect: tekan “Maklumat lanjut”, kemudian “Pasang juga”.</li>
+      <li>Buka Jomlah. Bila ditanya lokasi, pilih “Semasa menggunakan app”. Bila ditanya notifikasi, pilih “Benarkan”.</li>
+    </ol>
+    <div class="box"><strong>Kurang pasti?</strong> Minta anak, cucu atau kawan yang dipercayai pasangkan bersama. Jangan pasang app daripada pautan yang dihantar oleh orang yang tak dikenali.</div>
+    <div class="box warn"><strong>Selamat dulu.</strong> Ini versi ujian dan boleh tersilap. Ikut papan tanda dan undang-undang jalan raya. Letak telefon di pemegang dan jangan menaip semasa memandu.</div>
+  </section>
+
+  <section data-lang="en" lang="en">
+    <p class="tag">A free navigation app built in Malaysia. Beta for Android. No account, no ads.</p>
+    <a class="download" data-apk href="https://github.com/cng605568-art/jomlah/releases">⬇ Download for Android</a>
+    <p class="ver" hidden></p>
+    <h2>How to install (5 steps)</h2>
+    <ol>
+      <li>Tap the green button above. Wait for the file to finish downloading.</li>
+      <li>Open the file. Tap the notification, or find it in your “Files” app.</li>
+      <li>If the phone asks about “unknown sources”: tap “Settings”, switch on “Allow”, then press back.</li>
+      <li>If a Play Protect warning appears: tap “More details”, then “Install anyway”.</li>
+      <li>Open Jomlah. When asked about location, choose “While using the app”. When asked about notifications, choose “Allow”.</li>
+    </ol>
+    <div class="box"><strong>Not sure?</strong> Ask a child, grandchild or trusted friend to install it with you. Never install apps from links sent by strangers.</div>
+    <div class="box warn"><strong>Safety first.</strong> This is a test build and can be wrong. Follow road signs and the law. Mount your phone and never type while driving.</div>
+  </section>
+
+  <section data-lang="zh" lang="zh-Hans">
+    <p class="tag">马来西亚制造的免费导航应用。安卓测试版。无需账号，没有广告。</p>
+    <a class="download" data-apk href="https://github.com/cng605568-art/jomlah/releases">⬇ 下载安卓版</a>
+    <p class="ver" hidden></p>
+    <h2>安装方法（5 步）</h2>
+    <ol>
+      <li>按上面的绿色按钮，等文件下载完成。</li>
+      <li>打开下载好的文件。点通知，或在“文件”应用里找。</li>
+      <li>如果手机提示“未知来源”：点“设置”，打开“允许”，然后按返回。</li>
+      <li>如果出现 Play Protect 警告：点“更多详情”，再点“仍然安装”。</li>
+      <li>打开 Jomlah。询问位置时选“仅在使用该应用时允许”。询问通知时选“允许”。</li>
+    </ol>
+    <div class="box"><strong>不确定怎么做？</strong>请让子女、孙辈或信任的朋友陪你一起安装。不要安装陌生人发来的链接里的应用。</div>
+    <div class="box warn"><strong>安全第一。</strong>这是测试版，可能出错。请遵守路牌和交通法规。把手机固定在支架上，开车时不要打字。</div>
+  </section>
+
+  <footer>
+    <a data-privacy href="https://github.com/cng605568-art/jomlah/blob/main/PRIVACY.md">Privasi / Privacy / 隐私</a> ·
+    <a data-issues href="https://github.com/cng605568-art/jomlah/issues">Bug / Feedback / 反馈</a> ·
+    <a data-release href="https://github.com/cng605568-art/jomlah/releases">All versions</a>
+  </footer>
+</main>
+
+<script>
+(function () {
+  var d = document, root = d.documentElement;
+  root.className += ' js';
+
+  // Point every link at whichever repository is hosting this page (falls back to the original).
+  var owner = 'cng605568-art', repo = 'jomlah';
+  var parts = location.pathname.split('/').filter(Boolean);
+  if (/\.github\.io$/.test(location.hostname) && parts.length) {
+    owner = location.hostname.split('.')[0];
+    repo = parts[0];
+  }
+  var base = 'https://github.com/' + owner + '/' + repo;
+  function setAll(attr, url) {
+    var els = d.querySelectorAll('[' + attr + ']');
+    for (var i = 0; i < els.length; i++) els[i].href = url;
+  }
+  setAll('data-apk', base + '/releases');
+  setAll('data-release', base + '/releases');
+  setAll('data-issues', base + '/issues');
+  setAll('data-privacy', base + '/blob/main/PRIVACY.md');
+
+  // GitHub's "latest" link ignores pre-releases, so ask the API for the newest release of any kind
+  // and use the .apk attached to it. If that fails, the links above still open the releases list.
+  if (window.fetch) {
+    fetch('https://api.github.com/repos/' + owner + '/' + repo + '/releases?per_page=10', {
+      headers: { 'Accept': 'application/vnd.github+json' }
+    })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
+      .then(function (list) {
+        var rel = null;
+        for (var i = 0; i < list.length && !rel; i++) if (!list[i].draft) rel = list[i];
+        if (!rel) return;
+        var apk = null;
+        for (var j = 0; j < (rel.assets || []).length && !apk; j++) {
+          if (/\.apk$/i.test(rel.assets[j].name)) apk = rel.assets[j];
+        }
+        if (apk) setAll('data-apk', apk.browser_download_url);
+        setAll('data-release', rel.html_url);
+        var vers = d.querySelectorAll('.ver');
+        for (var k = 0; k < vers.length; k++) {
+          vers[k].textContent = rel.name || rel.tag_name;
+          vers[k].hidden = false;
+        }
+      })
+      .catch(function () {});
+  }
+
+  function show(lang) {
+    var secs = d.querySelectorAll('section[data-lang]');
+    for (var i = 0; i < secs.length; i++) {
+      secs[i].className = secs[i].getAttribute('data-lang') === lang ? 'active' : '';
+    }
+    var btns = d.querySelectorAll('.langs button');
+    for (var j = 0; j < btns.length; j++) {
+      btns[j].setAttribute('aria-pressed', btns[j].getAttribute('data-set') === lang ? 'true' : 'false');
+    }
+    root.lang = lang === 'zh' ? 'zh-Hans' : lang;
+  }
+  var btns = d.querySelectorAll('.langs button');
+  for (var k = 0; k < btns.length; k++) {
+    btns[k].addEventListener('click', function () { show(this.getAttribute('data-set')); });
+  }
+  var nav = (navigator.language || 'ms').toLowerCase();
+  show(nav.indexOf('zh') === 0 ? 'zh' : nav.indexOf('en') === 0 ? 'en' : 'ms');
+})();
+</script>
+</body>
+</html>
