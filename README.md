@@ -42,7 +42,10 @@ sit with them for the five steps. Only install apps from links you trust.
 - Map, search for places in Malaysia, and up to 3 route options to choose from before you go
 - Car or motorcycle routes, and an option to avoid tolls where possible
 - Saved Home and Work shortcuts, plus your recent destinations
+- An arrival summary (distance, time, average and top speed) with one-tap save as Home or Work
+- After two minutes of crawling, a "Nampak macam jem" prompt so you can report traffic with one tap
 - Turn-by-turn with next-turn card, automatic reroute, current speed, and night map
+- Highway exit signs on the turn card (exit number and where it leads), and a "Tol" tag on route options that use toll roads, where OpenStreetMap has the data
 - A car that glides smoothly along the road instead of jumping between GPS readings
 - The map turns with your direction while you drive, with the road ahead in view (switch to north-up in Settings)
 - Spoken directions in three voices (install your phone's Malay text-to-speech voice for Mamak Boss)
@@ -53,10 +56,18 @@ sit with them for the five steps. Only install apps from links you trust.
 ## What does not work yet
 
 - Alerts in this beta are **samples** and are not shared between users yet
-- No live traffic, no lane guidance, no offline maps, no CarPlay or Android Auto
+- No live traffic, no lane-by-lane guidance, no offline maps, no CarPlay or Android Auto
 - It can be wrong, especially at complex junctions. Road signs and the law come first
 - If you swipe the app away from recent apps, navigation stops
 - When the map turns, street names turn with it, because the map pictures are rotated as a whole
+
+## Try it without a car
+
+After you pick a destination, tap **Simulasi** next to **Jom!** and choose a speed. The app then
+drives the route by itself, so you can see the map follow, hear the voice, and watch the arrival
+summary from your sofa. Pick 8 km/j to see the "jem" prompt after two minutes. The real GPS is
+ignored while a simulation runs. You can also test for real as a passenger on a bus or in a
+friend's car.
 
 ## If the location stops updating
 

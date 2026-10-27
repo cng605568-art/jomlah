@@ -69,6 +69,7 @@ class VoiceEngine {
     final advDone = _announced.contains(advKey);
     final nowDone = _announced.contains(nowKey);
     final street = m.streetNames.isEmpty ? '' : m.streetNames.first;
+    final toward = m.sign?.towardText ?? '';
 
     if (d <= nowAt) {
       if (nowDone) return;
@@ -76,14 +77,14 @@ class VoiceEngine {
       if (hasNow) {
         if (_say(cue, now: true, priority: 2)) _announced.addAll([advKey, nowKey]);
       } else if (!advDone) {
-        if (_say(cue, distM: d, street: street, priority: 2)) {
+        if (_say(cue, distM: d, street: street, toward: toward, priority: 2)) {
           _announced.addAll([advKey, nowKey]);
         }
       } else {
         _announced.add(nowKey);
       }
     } else if (d <= advanceAt && !advDone) {
-      if (_say(cue, distM: d, street: street, priority: 2)) _announced.add(advKey);
+      if (_say(cue, distM: d, street: street, toward: toward, priority: 2)) _announced.add(advKey);
     }
   }
 
@@ -102,6 +103,7 @@ class VoiceEngine {
     bool now = false,
     double distM = 0,
     String street = '',
+    String toward = '',
     required int priority,
   }) {
     final s = settings();
@@ -111,6 +113,7 @@ class VoiceEngine {
       now ? pack.now[cue] : pack.advance[cue],
       distance: spokenDistance(distM, pack),
       street: street,
+      toward: toward,
       rng: _rng,
       avoidIndex: _lastIndex[cue] ?? -1,
     );

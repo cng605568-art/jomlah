@@ -35,6 +35,11 @@ We do not run these services, and they have their own policies.
 
 If a later version moves to our own servers, this page will say so.
 
+## Trip summary
+
+The summary shown when you arrive (distance, time, speeds) is worked out on your phone while you drive.
+It is not saved and not sent anywhere.
+
 ## Alerts (police, flood, pothole and so on)
 
 - **In the current beta**, alerts are samples kept in the app's memory. They are not sent anywhere

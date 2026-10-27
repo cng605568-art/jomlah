@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
@@ -12,6 +13,8 @@ import '../../routing/application/routing_providers.dart';
 import '../../routing/domain/route_plan.dart';
 import '../../routing/presentation/nav_banner.dart';
 import '../../search/application/search_providers.dart';
+import '../../search/domain/place.dart';
+import '../../voice/domain/voice_pack.dart';
 import '../../search/presentation/search_box.dart';
 import '../../settings/presentation/settings_button.dart';
 import '../../voice/application/voice_providers.dart';
@@ -19,6 +22,11 @@ import '../application/map_style_provider.dart';
 import '../application/providers.dart';
 import '../domain/car_motion.dart';
 import '../domain/gps_filter.dart';
+import '../domain/report.dart';
+import '../domain/simulated_drive.dart';
+import '../domain/jam_detector.dart';
+import '../domain/trip_stats.dart';
+import 'arrival_sheet.dart';
 import 'location_banner.dart';
 import 'vote_prompt.dart';
 import 'widgets.dart';
@@ -63,6 +71,15 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
   LatLng? _here; // smoothed, road-snapped position, updated once per GPS fix
   double _speedMps = 0;
 
+  final _stats = TripStats(); // arrival summary, on this phone only
+  final _jam = JamDetector();
+  Place? _destPlace; // the place the driver searched for, if they did
+  bool _askJam = false; // showing the "Jem?" prompt
+  Timer? _jamTimer;
+
+  SimulatedDrive? _sim; // a pretend drive is running (testing and demos, no car needed)
+  Timer? _simTimer;
+
   double _screenHeight = 800; // logical pixels, remembered from build() for the frame loop
   bool _follow = true;
   bool _movedToFirstFix = false;
@@ -98,6 +115,8 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
     _pose.dispose();
     _poll?.cancel();
     _staleTimer?.cancel();
+    _jamTimer?.cancel();
+    _simTimer?.cancel();
     WakelockPlus.disable();
     super.dispose();
   }
@@ -136,16 +155,61 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
     } catch (_) {} // map not ready yet
   }
 
-  /// Runs about once a second when a GPS fix arrives.
+  /// A real GPS fix. Ignored while a pretend drive (simulation) is running.
   void _onFix(Position pos) {
-    _lastFix = DateTime.now();
-    final filtered = _filter.accept(GpsFix(
+    if (_sim != null) return;
+    _processFix(GpsFix(
       position: LatLng(pos.latitude, pos.longitude),
       accuracyM: pos.accuracy,
       speedMps: pos.speed,
       headingDeg: pos.heading,
       time: DateTime.now(),
     ));
+  }
+
+  /// Pretend to drive the chosen route at [kmh], feeding fake GPS fixes into the very same pipeline.
+  void _startSimulation(double kmh) {
+    final nav = ref.read(routingProvider);
+    final plan = nav.plan;
+    if (plan == null || plan.shape.length < 2) return;
+    _stopSimulation();
+    _filter.reset(); // the first pretend fix starts the track afresh
+    ref.read(routingProvider.notifier).begin();
+    _sim = SimulatedDrive(
+      shape: plan.shape,
+      cumulativeM: plan.cumulativeM,
+      targetSpeedMps: kmh / 3.6,
+      // slow down for turns, exits and roundabouts, like a driver would
+      slowPointsM: [
+        for (final man in plan.maneuvers)
+          if (cueForManeuver(man.type) != null)
+            plan.cumulativeM[math.min(man.beginIndex, plan.cumulativeM.length - 1)],
+      ],
+      noiseM: 3, // a little jitter, so the GPS cleanup gets exercised too
+    );
+    _simTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      final sim = _sim;
+      if (sim == null) return;
+      _processFix(sim.step(1.0, DateTime.now()));
+      if (sim.finished) _stopSimulation();
+    });
+    setState(() {});
+  }
+
+  void _stopSimulation() {
+    _simTimer?.cancel();
+    _simTimer = null;
+    if (_sim != null) {
+      _sim = null;
+      _filter.reset(); // real GPS may be far from where the pretend drive ended
+      if (mounted) setState(() {});
+    }
+  }
+
+  /// Runs about once a second, for real and pretend fixes alike.
+  void _processFix(GpsFix raw) {
+    _lastFix = DateTime.now();
+    final filtered = _filter.accept(raw);
     if (filtered == null) return; // junk fix, ignore it
 
     final routing = ref.read(routingProvider.notifier);
@@ -164,6 +228,9 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
       _speedMps = filtered.speedMps;
     });
 
+    _stats.add(at, filtered.speedMps);
+    _maybeAskAboutJam(at, filtered.speedMps);
+
     if (!_movedToFirstFix) {
       _movedToFirstFix = true;
       if (_follow) _controller.move(at, 17);
@@ -180,7 +247,47 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
     }
   }
 
-  void _pickDestination(LatLng point) {
+  /// Offers a one-tap "Jem Teruk" report after a couple of minutes of crawling.
+  void _maybeAskAboutJam(LatLng at, double speedMps) {
+    final nav = ref.read(routingProvider);
+    final shouldAsk = _jam.update(
+      now: DateTime.now(),
+      speedMps: speedMps,
+      navigating: nav.navigating,
+      remainingM: nav.remainingM,
+    );
+    if (!shouldAsk) return;
+    final alreadyReported = ref.read(reportsProvider).reports.any(
+          (r) => r.type == ReportType.jam && !r.isExpired && haversineM(at, r.position) < 300,
+        );
+    if (alreadyReported) return;
+    _jamTimer?.cancel();
+    setState(() => _askJam = true);
+    _jamTimer = Timer(const Duration(seconds: 10), () {
+      if (mounted) setState(() => _askJam = false);
+    });
+  }
+
+  void _reportJam() {
+    final here = _here;
+    _jamTimer?.cancel();
+    setState(() => _askJam = false);
+    if (here != null) ref.read(reportsProvider.notifier).report(ReportType.jam, here);
+  }
+
+  void _showArrival() {
+    final summary = _stats.summary(DateTime.now());
+    final place = _destPlace;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      showArrivalSheet(context, ref: ref, summary: summary, place: place).whenComplete(() {
+        if (mounted) ref.read(routingProvider.notifier).cancel(); // back to the search bar
+      });
+    });
+  }
+
+  void _pickDestination(LatLng point, {Place? place}) {
+    _destPlace = place;
     final raw = ref.read(locationProvider).valueOrNull;
     final from = _here ?? (raw == null ? null : LatLng(raw.latitude, raw.longitude));
     if (from == null) {
@@ -213,7 +320,10 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
     // Keep the screen on only while a trip is in progress.
     ref.listen(routingProvider.select((s) => s.navigating), (_, active) {
       WakelockPlus.toggle(enable: active);
-      if (!active) _resetRotation(); // trip over: back to north-up
+      if (!active) {
+        _resetRotation(); // trip over: back to north-up
+        _stopSimulation();
+      }
     });
 
     // Show every route option when a brand-new plan arrives (not on rerouting or choosing).
@@ -231,8 +341,17 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
       );
     });
 
-    // "Jom!" pressed: switch to following the car.
+    // Arrived: show how the trip went.
+    ref.listen(routingProvider.select((s) => s.arrived), (prev, now) {
+      if (now && prev != true) _showArrival();
+    });
+
+    // "Jom!" pressed: start counting the trip and switch to following the car.
     ref.listen(routingProvider.select((s) => s.previewing), (prev, now) {
+      if (prev == true && !now) {
+        _stats.begin(DateTime.now());
+        _jam.reset();
+      }
       final here = _here;
       if (prev == true && !now && here != null) {
         _follow = true;
@@ -375,9 +494,9 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
                   children: [
                     // Search until a destination is chosen, then route options or turn-by-turn.
                     if (nav.destination == null)
-                      SearchBox(onPick: (place) => _pickDestination(place.position))
+                      SearchBox(onPick: (place) => _pickDestination(place.position, place: place))
                     else
-                      const NavBanner(),
+                      NavBanner(onSimulate: _startSimulation),
                     const LocationBanner(),
                     if (_stale) const StaleGpsBanner(),
                   ],
@@ -387,9 +506,24 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
           ),
           Positioned(left: 0, right: 0, bottom: 0, child: ReportBar(at: here)),
           const Positioned(left: 12, right: 12, bottom: 210, child: VotePrompt()),
+          if (_askJam)
+            Positioned(
+              left: 12,
+              right: 12,
+              bottom: 280,
+              child: _JamPrompt(
+                onReport: _reportJam,
+                onDismiss: () {
+                  _jamTimer?.cancel();
+                  setState(() => _askJam = false);
+                },
+              ),
+            ),
           const Positioned(left: 16, bottom: 140, child: SettingsButton()),
           if (here != null)
             Positioned(left: 16, bottom: 196, child: _SpeedBubble(kmh: _speedMps * 3.6)),
+          if (_sim != null)
+            const Positioned(left: 16, bottom: 262, child: _SimPill()),
           if (!_follow && here != null)
             Positioned(
               right: 16,
@@ -437,5 +571,55 @@ class _SpeedBubble extends StatelessWidget {
             const Text('km/j', style: TextStyle(fontSize: 10, color: Colors.white70)),
           ],
         ),
+      );
+}
+
+class _JamPrompt extends StatelessWidget {
+  const _JamPrompt({required this.onReport, required this.onDismiss});
+  final VoidCallback onReport;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) => Material(
+        color: const Color(0xF2171C36),
+        borderRadius: BorderRadius.circular(24),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  '🐌 Nampak macam jem. Lapor Jem Teruk?',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(minimumSize: const Size(72, 56)),
+                onPressed: onReport,
+                child: const Text('Lapor'),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton(
+                style: OutlinedButton.styleFrom(minimumSize: const Size(72, 56)),
+                onPressed: onDismiss,
+                child: const Text('Tak'),
+              ),
+            ],
+          ),
+        ),
+      );
+}
+
+class _SimPill extends StatelessWidget {
+  const _SimPill();
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFF4F8B),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: const Text('🧪 Simulasi', style: TextStyle(fontWeight: FontWeight.w800)),
       );
 }

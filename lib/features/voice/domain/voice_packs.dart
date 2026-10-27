@@ -25,15 +25,19 @@ const kMamakBoss = VoicePack(
     ],
     Cue.keepLeft: [
       'Boss, {d} lagi, ambil kiri. Relaks je.',
+      'Boss, {d} lagi, ambil kiri ke arah {toward}.',
     ],
     Cue.keepRight: [
       'Boss, {d} lagi, ambil kanan. Relaks je.',
+      'Boss, {d} lagi, ambil kanan ke arah {toward}.',
     ],
     Cue.exitLeft: [
       '{d} lagi, keluar kiri Boss. Jangan tersasar, nanti pusing jauh.',
+      '{d} lagi, keluar kiri ke arah {toward}, Boss.',
     ],
     Cue.exitRight: [
       '{d} lagi, keluar kanan Boss. Jangan tersasar, nanti pusing jauh.',
+      '{d} lagi, keluar kanan ke arah {toward}, Boss.',
     ],
     Cue.uTurn: [
       'Boss, {d} lagi, U-turn. Pusing balik, takpe, bukan salah Boss.',
@@ -103,15 +107,19 @@ const kKlite = VoicePack(
     ],
     Cue.keepLeft: [
       'Keep left in {d}. Lanes exist for a reason. Allegedly.',
+      'Keep left in {d} for {toward}. The sign is big and green for a reason.',
     ],
     Cue.keepRight: [
       'Keep right in {d}. Lanes exist for a reason. Allegedly.',
+      'Keep right in {d} for {toward}. The sign is big and green for a reason.',
     ],
     Cue.exitLeft: [
       'Exit on the left in {d}. No, not the next one. This one.',
+      'Exit on the left in {d} towards {toward}. No, not the next one. This one.',
     ],
     Cue.exitRight: [
       'Exit on the right in {d}. No, not the next one. This one.',
+      'Exit on the right in {d} towards {toward}. No, not the next one. This one.',
     ],
     Cue.uTurn: [
       'U-turn in {d}. We all make mistakes. Some of us make them more often.',
@@ -177,10 +185,10 @@ const kSerious = VoicePack(
       'In {d}, turn right.',
       'In {d}, turn right onto {street}.',
     ],
-    Cue.keepLeft: ['In {d}, keep left.'],
-    Cue.keepRight: ['In {d}, keep right.'],
-    Cue.exitLeft: ['In {d}, take the exit on the left.'],
-    Cue.exitRight: ['In {d}, take the exit on the right.'],
+    Cue.keepLeft: ['In {d}, keep left.', 'In {d}, keep left towards {toward}.'],
+    Cue.keepRight: ['In {d}, keep right.', 'In {d}, keep right towards {toward}.'],
+    Cue.exitLeft: ['In {d}, take the exit on the left.', 'In {d}, take the exit on the left towards {toward}.'],
+    Cue.exitRight: ['In {d}, take the exit on the right.', 'In {d}, take the exit on the right towards {toward}.'],
     Cue.uTurn: ['In {d}, make a U-turn.'],
     Cue.roundabout: ['In {d}, enter the roundabout.'],
     Cue.merge: ['In {d}, merge.'],

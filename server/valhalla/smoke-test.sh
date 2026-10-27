@@ -12,11 +12,17 @@ curl -s -X POST "$URL/route" -H 'Content-Type: application/json' -d '{
 # Lane check for later: run SPE / SUKE / Federal Highway routes and look at the maneuver
 # JSON for lane information. If it is absent, that is an OSM data gap to fix (Lorong Squad).
 
-echo "--- lane data? (counts of the word lanes in the response; 0 means none)"
-PLAIN=$(curl -s -X POST "$URL/route" -H 'Content-Type: application/json' -d '{
+echo "--- what guidance data does the server send for this route?"
+JSON=$(curl -s -X POST "$URL/route" -H 'Content-Type: application/json' -d '{
   "locations": [{"lat": 3.1579, "lon": 101.7116}, {"lat": 2.9264, "lon": 101.6964}],
-  "costing": "auto"}' | grep -o '"lanes"' | wc -l)
-WITH=$(curl -s -X POST "$URL/route" -H 'Content-Type: application/json' -d '{
+  "costing": "auto", "alternates": 2}')
+echo "exit signs (sign blocks): $(echo "$JSON" | grep -o '"sign"' | wc -l)"
+echo "toll flags (has_toll):    $(echo "$JSON" | grep -o '"has_toll":true' | wc -l)"
+echo "alternate routes:         $(echo "$JSON" | grep -o '"alternates"' | wc -l)"
+OSRM=$(curl -s -X POST "$URL/route" -H 'Content-Type: application/json' -d '{
   "locations": [{"lat": 3.1579, "lon": 101.7116}, {"lat": 2.9264, "lon": 101.6964}],
-  "costing": "auto", "directions_options": {"turn_lanes": true}}' | grep -o '"lanes"' | wc -l)
-echo "default request: $PLAIN | with turn_lanes option: $WITH"
+  "costing": "auto", "format": "osrm", "banner_instructions": true}')
+echo "lane data (OSRM format, word lanes): $(echo "$OSRM" | grep -o '"lanes"' | wc -l)"
+echo "banner instructions:                 $(echo "$OSRM" | grep -o '"bannerInstructions"' | wc -l)"
+# Lane guidance is not part of Valhalla's standard JSON. If the lane count above is 0, the app cannot
+# show lanes from this server; exit signs are what is available.

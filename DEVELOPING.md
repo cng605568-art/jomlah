@@ -99,10 +99,16 @@ the data-residency promise.
   permissions. No background-location permission is needed because the trip starts with the app open.
 - Night map is a colour filter on the normal OSM tiles. Real dark vector tiles need a tile server.
 
-## Lane guidance (not built yet)
-Valhalla may include lane data in its route response, but the exact format and the switch to turn it
-on are not confirmed. Run `server/valhalla/smoke-test.sh https://valhalla1.openstreetmap.de` and look at
-the "lanes" lines. If lane data shows up, the UI can be built against the real JSON.
+## Lane guidance and exit signs
+The Valhalla route documentation I could read lists no lane fields in the standard JSON, so the app cannot
+draw lane arrows from it. What it does provide, and what the app now uses:
+- `sign` on a maneuver: exit number, the road you join, and "toward" destinations (from OSM `ref`, `destination`
+  and `exit_to` tags). The turn card shows them as a green sign chip and the voice can say them (`{toward}`).
+- `summary.has_toll` per route, shown as "Tol" on the route options.
+`server/valhalla/smoke-test.sh` counts signs, toll flags, alternates and (in OSRM format) lanes and banner
+instructions for a sample route, so you can see what your server sends. Whether signs appear on a given road
+depends on how well it is tagged in OpenStreetMap, which is a job for volunteer mapping.
+Requests now put `units` and `language` at the top level, as the current docs describe.
 
 ## Step 7: saved places and location status
 - Tap the search bar to see **Rumah** and **Pejabat** shortcuts plus recent destinations. To save one,
@@ -165,3 +171,21 @@ is doing the turning. Dragging the map, or ending the trip, resets the rotation 
 The sign of the rotation (`-heading`) follows flutter_map's "0 is north" convention; if the map ever
 spins the wrong way on a device, flip it in one place (`_onFrame`).
 Settings > "Arah peta semasa memandu" switches between Ikut arah (heading-up) and Utara ke atas.
+
+## Step 10: arrival summary and jam prompt
+- `TripStats` (map/domain/trip_stats.dart) starts when Jom! is pressed and adds up distance (ignoring GPS
+  jumps over 200 m), average speed and top speed. When `arrived` turns true the map screen opens
+  `showArrivalSheet`, which also offers to save the destination as Home or Work if it came from search.
+  Closing the sheet resets the screen to the search bar.
+- `JamDetector` (map/domain/jam_detector.dart) asks "Lapor Jem Teruk?" after 2 minutes below 3 m/s while
+  navigating with more than 300 m to go, then rests for 15 minutes. It does not ask if a jam report
+  already exists within 300 m. Tune `slowMps`, `minSlow` and `cooldown` there. Long red lights are
+  usually shorter than two minutes, so they should not trigger it.
+
+## Step 11: simulated drive (testing without a car)
+`SimulatedDrive` (map/domain/simulated_drive.dart) walks along the chosen route at 30, 60, 90 or 8 km/h,
+accelerating gently, slowing for turns, easing to a stop, and adding about 3 m of jitter. The map screen
+feeds its fixes into `_processFix`, the same function real GPS uses, so the filter, snapping, animation,
+heading-up camera, voice, jam prompt, arrival sheet and trip stats all run exactly as on a real drive.
+Real GPS is ignored while it runs, and it stops when the trip ends or is cancelled. Road alerts ahead
+(voice) still use the real GPS, so they will not trigger in a simulation.

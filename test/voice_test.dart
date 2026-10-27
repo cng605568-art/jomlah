@@ -25,6 +25,22 @@ void main() {
     expect(withStreet.text.contains('{'), isFalse);
   });
 
+  test('pickLine only uses {toward} lines when it knows where the exit goes', () {
+    final lines = ['In {d}, exit.', 'In {d}, exit towards {toward}.'];
+
+    // No idea where the exit goes: the {toward} line is never an option, whatever the dice say.
+    for (var n = 0; n < 5; n++) {
+      final p = pickLine(lines, distance: '300 metres', street: '', rng: _Pick(n))!;
+      expect(p.text, 'In 300 metres, exit.');
+    }
+
+    // Knows the destination: both lines are options, and the placeholder is filled in.
+    final first = pickLine(lines, distance: '300 metres', street: '', toward: 'Putrajaya', rng: _Pick(0))!;
+    final second = pickLine(lines, distance: '300 metres', street: '', toward: 'Putrajaya', rng: _Pick(1))!;
+    expect(first.text, 'In 300 metres, exit.');
+    expect(second.text, 'In 300 metres, exit towards Putrajaya.');
+  });
+
   test('pickLine avoids repeating the previous line', () {
     final lines = ['A', 'B'];
     for (var i = 0; i < 20; i++) {
@@ -46,4 +62,19 @@ void main() {
       }
     }
   });
+}
+
+/// A "random" source that always answers n, so the test never depends on a seed.
+class _Pick implements Random {
+  _Pick(this.n);
+  final int n;
+
+  @override
+  int nextInt(int max) => n % max;
+
+  @override
+  double nextDouble() => 0;
+
+  @override
+  bool nextBool() => false;
 }

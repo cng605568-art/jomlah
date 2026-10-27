@@ -23,7 +23,7 @@ enum Cue {
   crash,
 }
 
-/// A personality. Lines may use {d} (spoken distance) and {street}.
+/// A personality. Lines may use {d} (spoken distance), {street} and {toward} (where an exit leads).
 /// Later, each line can map to a recorded clip; today they go through the phone's TTS.
 class VoicePack {
   const VoicePack({
@@ -87,23 +87,29 @@ String spokenDistance(double m, VoicePack pack) {
   return '${((m / 100).round() / 10).toStringAsFixed(1)} ${pack.km}';
 }
 
-/// Picks a random line, avoiding the last one used and any {street} line when we have no street.
+/// Picks a random line, avoiding the last one used and any line needing a {street} or {toward} we lack.
 ({String text, int index})? pickLine(
   List<String>? lines, {
   required String distance,
   required String street,
+  String toward = '',
   required Random rng,
   int avoidIndex = -1,
 }) {
   if (lines == null || lines.isEmpty) return null;
   final usable = <int>[
     for (var i = 0; i < lines.length; i++)
-      if (street.isNotEmpty || !lines[i].contains('{street}')) i,
+      if ((street.isNotEmpty || !lines[i].contains('{street}')) &&
+          (toward.isNotEmpty || !lines[i].contains('{toward}')))
+        i,
   ];
   if (usable.isEmpty) return null;
   var candidates = usable.where((i) => i != avoidIndex).toList();
   if (candidates.isEmpty) candidates = usable;
   final i = candidates[rng.nextInt(candidates.length)];
-  final text = lines[i].replaceAll('{d}', distance).replaceAll('{street}', street);
+  final text = lines[i]
+      .replaceAll('{d}', distance)
+      .replaceAll('{street}', street)
+      .replaceAll('{toward}', toward);
   return (text: text, index: i);
 }

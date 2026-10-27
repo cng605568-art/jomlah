@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../application/routing_providers.dart';
+import '../domain/route_plan.dart';
 
 const _lime = Color(0xFFC8FF3D);
 
@@ -50,7 +51,10 @@ String formatDistance(double m) =>
     m < 1000 ? '${(m / 10).round() * 10} m' : '${(m / 1000).toStringAsFixed(1)} km';
 
 class NavBanner extends ConsumerWidget {
-  const NavBanner({super.key});
+  const NavBanner({super.key, this.onSimulate});
+
+  /// When set, the route preview offers a pretend drive at the chosen speed in km/h.
+  final void Function(double kmh)? onSimulate;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -100,26 +104,62 @@ class NavBanner extends ConsumerWidget {
                     label: Text(
                       '${nav.candidates.length > 1 && i == fastest ? 'Terpantas · ' : ''}'
                       '${(nav.candidates[i].durationSec / 60).ceil()} min · '
-                      '${nav.candidates[i].distanceKm.toStringAsFixed(1)} km',
+                      '${nav.candidates[i].distanceKm.toStringAsFixed(1)} km'
+                      '${nav.candidates[i].hasToll ? ' · Tol' : ''}',
                     ),
                   ),
               ],
             ),
             const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: FilledButton.icon(
-                onPressed: () async {
-                  // Android 13+ hides the "navigation active" notice unless allowed.
-                  try {
-                    await Permission.notification.request();
-                  } catch (_) {}
-                  notifier.begin();
-                },
-                icon: const Icon(Icons.navigation),
-                label: const Text('Jom!', style: TextStyle(fontSize: 18)),
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 52,
+                    child: FilledButton.icon(
+                      onPressed: () async {
+                        // Android 13+ hides the "navigation active" notice unless allowed.
+                        try {
+                          await Permission.notification.request();
+                        } catch (_) {}
+                        notifier.begin();
+                      },
+                      icon: const Icon(Icons.navigation),
+                      label: const Text('Jom!', style: TextStyle(fontSize: 18)),
+                    ),
+                  ),
+                ),
+                if (onSimulate != null) ...[
+                  const SizedBox(width: 8),
+                  PopupMenuButton<double>(
+                    tooltip: 'Simulasi pemanduan',
+                    onSelected: onSimulate,
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(value: 30.0, child: Text('30 km/j (bandar)')),
+                      PopupMenuItem(value: 60.0, child: Text('60 km/j')),
+                      PopupMenuItem(value: 90.0, child: Text('90 km/j (lebuh raya)')),
+                      PopupMenuItem(value: 8.0, child: Text('8 km/j (jem)')),
+                    ],
+                    child: Container(
+                      height: 52,
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.white54),
+                        borderRadius: BorderRadius.circular(26),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.science_outlined, size: 20),
+                          SizedBox(width: 6),
+                          Text('Simulasi'),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ],
         ),
@@ -148,6 +188,7 @@ class NavBanner extends ConsumerWidget {
                   style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
                 ),
                 Text(next.instruction, maxLines: 2, overflow: TextOverflow.ellipsis),
+                if (next.sign != null && !next.sign!.isEmpty) _SignChip(sign: next.sign!),
                 const SizedBox(height: 4),
                 Text(
                   nav.rerouting
@@ -184,4 +225,35 @@ class _Card extends StatelessWidget {
           ),
         ),
       );
+}
+
+/// Looks like the green expressway signs: "Keluar 205 · SUKE · ke Putrajaya / Cyberjaya".
+class _SignChip extends StatelessWidget {
+  const _SignChip({required this.sign});
+  final ExitSign sign;
+
+  @override
+  Widget build(BuildContext context) {
+    final parts = [
+      if (sign.numberText != null) 'Keluar ${sign.numberText}',
+      if (sign.branchText != null) sign.branchText!,
+      if (sign.towardText != null) 'ke ${sign.towardText}',
+    ];
+    if (parts.isEmpty) return const SizedBox.shrink();
+    return Container(
+      margin: const EdgeInsets.only(top: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0B6B3A),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: Colors.white70),
+      ),
+      child: Text(
+        parts.join(' · '),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
+      ),
+    );
+  }
 }

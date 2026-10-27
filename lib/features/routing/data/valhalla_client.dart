@@ -50,7 +50,8 @@ class ValhallaClient {
               ],
               'costing': prefs.vehicle.costing,
               'costing_options': prefs.costingOptions,
-              'directions_options': {'units': 'kilometers', 'language': 'en-US'},
+              'units': 'kilometers',
+              'language': 'en-US',
               if (alternates > 0) 'alternates': alternates,
             }),
           )
@@ -96,5 +97,7 @@ RoutePlan _planFromTrip(Map<String, dynamic> trip) {
     ],
     distanceKm: (summary['length'] as num).toDouble(),
     durationSec: (summary['time'] as num).toDouble(),
+    hasToll: summary['has_toll'] == true,
+    hasHighway: summary['has_highway'] == true,
   );
 }

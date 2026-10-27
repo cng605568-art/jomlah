@@ -2,6 +2,41 @@ import 'dart:math' as math;
 import 'package:latlong2/latlong.dart';
 import '../../../core/geo.dart';
 
+/// The green highway sign for an exit or fork: exit number, road, and where it leads.
+/// Valhalla fills this from OpenStreetMap tags, so it only appears where the map has them.
+class ExitSign {
+  const ExitSign({
+    this.number = const [],
+    this.branch = const [],
+    this.toward = const [],
+    this.name = const [],
+  });
+
+  final List<String> number; // exit number, e.g. 205
+  final List<String> branch; // the road you join, e.g. SUKE
+  final List<String> toward; // destinations on the sign, e.g. Putrajaya
+  final List<String> name; // interchange name
+
+  bool get isEmpty => number.isEmpty && branch.isEmpty && toward.isEmpty && name.isEmpty;
+
+  String? get numberText => number.isEmpty ? null : number.first;
+  String? get branchText => branch.isEmpty ? null : branch.first;
+  String? get towardText => toward.isEmpty ? null : toward.take(3).join(' / ');
+
+  factory ExitSign.fromJson(Map<String, dynamic> j) {
+    List<String> texts(String key) => [
+          for (final e in (j[key] as List? ?? const []))
+            if (e is Map && e['text'] is String) e['text'] as String,
+        ];
+    return ExitSign(
+      number: texts('exit_number_elements'),
+      branch: texts('exit_branch_elements'),
+      toward: texts('exit_toward_elements'),
+      name: texts('exit_name_elements'),
+    );
+  }
+}
+
 /// One step of the route, straight from Valhalla's `maneuvers` list.
 class Maneuver {
   const Maneuver({
@@ -11,6 +46,7 @@ class Maneuver {
     required this.beginIndex,
     required this.endIndex,
     required this.streetNames,
+    this.sign,
   });
 
   /// Valhalla maneuver type: 10 right, 15 left, 4-6 destination, 26 roundabout...
@@ -21,6 +57,7 @@ class Maneuver {
   final int beginIndex; // index into RoutePlan.shape where this maneuver starts
   final int endIndex;
   final List<String> streetNames;
+  final ExitSign? sign; // highway sign info, when the map has it
 
   factory Maneuver.fromJson(Map<String, dynamic> j) => Maneuver(
         type: j['type'] as int,
@@ -29,6 +66,9 @@ class Maneuver {
         beginIndex: j['begin_shape_index'] as int,
         endIndex: j['end_shape_index'] as int,
         streetNames: ((j['street_names'] as List?) ?? const []).cast<String>(),
+        sign: j['sign'] is Map<String, dynamic>
+            ? ExitSign.fromJson(j['sign'] as Map<String, dynamic>)
+            : null,
       );
 }
 
@@ -38,12 +78,16 @@ class RoutePlan {
     required this.maneuvers,
     required this.distanceKm,
     required this.durationSec,
+    this.hasToll = false,
+    this.hasHighway = false,
   }) : cumulativeM = _cumulative(shape);
 
   final List<LatLng> shape;
   final List<Maneuver> maneuvers;
   final double distanceKm;
   final double durationSec;
+  final bool hasToll; // the route uses at least one toll segment
+  final bool hasHighway;
 
   /// cumulativeM[i] = metres from the start of the route to shape[i].
   final List<double> cumulativeM;
