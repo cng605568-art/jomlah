@@ -11,10 +11,16 @@ final valhallaClientProvider =
 
 /// The car's position pulled onto the road we are following.
 class RouteSnap {
-  const RouteSnap({required this.point, required this.bearingDeg, required this.distanceM});
+  const RouteSnap({
+    required this.point,
+    required this.bearingDeg,
+    required this.distanceM,
+    required this.alongM,
+  });
   final LatLng point;
   final double bearingDeg; // direction of travel along the road here
   final double distanceM; // how far the GPS position was from the road
+  final double alongM; // metres from the start of the route to [point]
 }
 
 class NavState {
@@ -150,11 +156,12 @@ class RoutingNotifier extends Notifier<NavState> {
     state = const NavState();
   }
 
-  /// Call on every GPS fix.
-  void onPosition(LatLng here) {
+  /// Call on every GPS fix. Pass [headingDeg] when the car is clearly moving (it keeps the car on
+  /// the side of the road it is really driving on; see [_nearest]).
+  void onPosition(LatLng here, {double? headingDeg}) {
     final s = state;
     if (s.plan == null || s.loading || s.previewing || s.arrived) return;
-    state = _track(s, here);
+    state = _track(s, here, headingDeg: headingDeg);
     final cooledDown = DateTime.now().difference(_lastReroute) > _rerouteCooldown;
     if (_offRouteM > _offRouteThresholdM && !s.rerouting && cooledDown) {
       _reroute(here);
@@ -163,34 +170,50 @@ class RoutingNotifier extends Notifier<NavState> {
 
   /// Pulls [p] onto the route when it is within [maxDistanceM] of it (GPS drifts a few metres, roads do
   /// not). Returns null when not navigating or when the car is clearly somewhere else.
-  RouteSnap? snap(LatLng p, {double maxDistanceM = 30}) {
+  RouteSnap? snap(LatLng p, {double maxDistanceM = 30, double? headingDeg}) {
     final plan = state.plan;
     if (!state.navigating || plan == null || plan.shape.length < 2) return null;
     final shape = plan.shape;
     final first = math.min(_seg, shape.length - 2);
     final last = math.min(shape.length - 2, _seg + 40); // only look just ahead
-    var bestD = double.infinity;
-    var bestI = first;
-    var bestT = 0.0;
-    for (var i = first; i <= last; i++) {
-      final r = _project(p, shape[i], shape[i + 1]);
-      if (r.dist < bestD) {
-        bestD = r.dist;
-        bestI = i;
-        bestT = r.t;
-      }
-    }
-    if (bestD > maxDistanceM) return null;
-    final a = shape[bestI];
-    final b = shape[bestI + 1];
+    final best = _nearest(shape, p, first, last, headingDeg);
+    if (best.dist > maxDistanceM) return null;
+    final a = shape[best.seg];
+    final b = shape[best.seg + 1];
+    final cum = plan.cumulativeM;
     return RouteSnap(
       point: LatLng(
-        a.latitude + bestT * (b.latitude - a.latitude),
-        a.longitude + bestT * (b.longitude - a.longitude),
+        a.latitude + best.t * (b.latitude - a.latitude),
+        a.longitude + best.t * (b.longitude - a.longitude),
       ),
       bearingDeg: bearingDeg(a, b),
-      distanceM: bestD,
+      distanceM: best.dist,
+      alongM: cum[best.seg] + best.t * (cum[best.seg + 1] - cum[best.seg]),
     );
+  }
+
+  /// The route segment between [first] and [last] closest to [p]. With [headingDeg], segments that
+  /// point against the direction of travel are skipped: on Malaysian U-turn routes the way back runs
+  /// right beside the way out, and the car must stay on the side it is really driving on (otherwise
+  /// the U-turn instruction would be skipped). If every nearby segment points the other way, the
+  /// heading is ignored.
+  ({int seg, double t, double dist}) _nearest(
+    List<LatLng> shape,
+    LatLng p,
+    int first,
+    int last,
+    double? headingDeg,
+  ) {
+    var best = (seg: first, t: 0.0, dist: double.infinity);
+    for (var i = first; i <= last; i++) {
+      if (headingDeg != null && _against(shape[i], shape[i + 1], headingDeg)) continue;
+      final r = _project(p, shape[i], shape[i + 1]);
+      if (r.dist < best.dist) best = (seg: i, t: r.t, dist: r.dist);
+    }
+    if (best.dist == double.infinity && headingDeg != null) {
+      return _nearest(shape, p, first, last, null);
+    }
+    return best;
   }
 
   /// Metres from [p] to the part of the route still ahead of us, or null with no route.
@@ -234,25 +257,18 @@ class RoutingNotifier extends Notifier<NavState> {
   }
 
   /// Works out where we are on the route, the next maneuver and the distances.
-  NavState _track(NavState s, LatLng here) {
+  NavState _track(NavState s, LatLng here, {double? headingDeg}) {
     final plan = s.plan!;
     final shape = plan.shape;
     if (shape.length < 2 || plan.maneuvers.isEmpty) return s;
 
     // Highways have vertices kilometres apart, so measure to segments, not points.
-    final first = math.max(0, _seg - 3);
+    final first = math.min(math.max(0, _seg - 3), shape.length - 2);
     final last = math.min(shape.length - 2, _seg + 400);
-    var bestSeg = math.min(_seg, shape.length - 2);
-    var bestT = 0.0;
-    var bestD = double.infinity;
-    for (var i = first; i <= last; i++) {
-      final p = _project(here, shape[i], shape[i + 1]);
-      if (p.dist < bestD) {
-        bestD = p.dist;
-        bestSeg = i;
-        bestT = p.t;
-      }
-    }
+    final best = _nearest(shape, here, first, last, headingDeg);
+    final bestSeg = best.seg;
+    final bestT = best.t;
+    final bestD = best.dist;
     _seg = bestSeg;
     _offRouteM = bestD;
 
@@ -277,6 +293,13 @@ class RoutingNotifier extends Notifier<NavState> {
 
 final routingProvider =
     NotifierProvider<RoutingNotifier, NavState>(RoutingNotifier.new);
+
+/// True when segment a-b points more than 100 degrees away from [headingDeg].
+bool _against(LatLng a, LatLng b, double headingDeg) {
+  if (haversineM(a, b) < 1) return false; // too short to have a direction
+  final diff = ((bearingDeg(a, b) - headingDeg + 540) % 360) - 180;
+  return diff.abs() > 100;
+}
 
 /// Distance from point [p] to segment a-b in metres, plus how far along it (0..1).
 /// Flat-earth maths is plenty accurate at street scale.

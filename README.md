@@ -48,7 +48,8 @@ sit with them for the five steps. Only install apps from links you trust.
 - A speed limit sign next to your speed where OpenStreetMap knows the limit; your speed turns red
   when you are 5 km/j or more over it, and the voice reminds you once per stretch of road
 - Highway exit signs on the turn card (exit number and where it leads), and a "Tol" tag on route options that use toll roads, where OpenStreetMap has the data
-- A car that glides smoothly along the road instead of jumping between GPS readings
+- A car that glides along the road itself between GPS readings, following bends and turning with
+  the road, with brake lights when you slow down; a circle shows how sure the GPS is while you browse
 - The map turns with your direction while you drive, with the road ahead in view (switch to north-up in Settings)
 - Spoken directions in three voices (install your phone's Malay text-to-speech voice for Mamak Boss)
 - Keeps navigating with the screen off or another app open (Android shows a "navigation active"
@@ -85,8 +86,8 @@ for Jomlah, and press **Jom!** with the app open so the navigation service can s
 GPS accuracy depends on your phone and the sky. Turn on high-accuracy location in Android's location
 settings (it may be called "Google Location Accuracy"), turn off battery saver, and keep the phone
 where it can see the sky, for example on a dashboard mount rather than in a bag. Tall buildings and
-tunnels will still confuse any GPS app. Jomlah ignores obviously bad readings and snaps the car onto
-the road you are following, but it cannot invent a signal your phone does not have.
+tunnels will still confuse any GPS app. Jomlah ignores obviously bad readings, gives little weight to readings
+bounced off tall buildings, and snaps the car onto the road you are following, but it cannot invent a signal your phone does not have.
 
 ## Stay safe
 

@@ -76,5 +76,65 @@ void main() {
     expect(snap.bearingDeg, closeTo(0, 1));
 
     expect(routing.snap(offsetM(origin, 100, 300)), isNull); // 100 m away: not on this road
+    expect(snap.alongM, closeTo(300, 1.5)); // metres from the start, for the car animation
+  });
+
+  test('on a U-turn route, stays on the side of the road it is really driving on', () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    // Out 300 m north, U-turn across a 12 m divider, back 300 m south: the way back is very close.
+    final plan = RoutePlan(
+      shape: [origin, offsetM(origin, 0, 300), offsetM(origin, 12, 300), offsetM(origin, 12, 0)],
+      maneuvers: const [
+        Maneuver(
+          type: 1,
+          instruction: 'Drive north.',
+          lengthKm: 0.3,
+          beginIndex: 0,
+          endIndex: 1,
+          streetNames: [],
+        ),
+        Maneuver(
+          type: 12,
+          instruction: 'Make a U-turn.',
+          lengthKm: 0.31,
+          beginIndex: 1,
+          endIndex: 3,
+          streetNames: [],
+        ),
+        Maneuver(
+          type: 4,
+          instruction: 'You have arrived.',
+          lengthKm: 0,
+          beginIndex: 3,
+          endIndex: 3,
+          streetNames: [],
+        ),
+      ],
+      distanceKm: 0.612,
+      durationSec: 60,
+    );
+    final container = ProviderContainer(overrides: [
+      sharedPrefsProvider.overrideWithValue(prefs),
+      valhallaClientProvider.overrideWithValue(_FakeClient(plan)),
+    ]);
+    addTearDown(container.dispose);
+
+    final routing = container.read(routingProvider.notifier);
+    await routing.start(origin, offsetM(origin, 12, 0));
+    routing.begin();
+
+    // 150 m out, drifted 7 m towards the divider: 5 m from the way back, 7 m from the way out.
+    final p = offsetM(origin, 7, 150);
+    routing.onPosition(p, headingDeg: 0); // driving north
+    final nav = container.read(routingProvider);
+    expect(nav.segment, 0);
+    expect(nav.next!.type, 12); // the U-turn is still ahead, not skipped
+    expect(nav.distanceToNextM, closeTo(150, 2));
+
+    final snap = routing.snap(p, headingDeg: 0)!;
+    expect(snap.bearingDeg, closeTo(0, 1));
+    expect(snap.point.longitude, closeTo(origin.longitude, 1e-6));
+    expect(snap.alongM, closeTo(150, 1.5));
   });
 }

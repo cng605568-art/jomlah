@@ -29,6 +29,7 @@ import '../domain/simulated_drive.dart';
 import '../domain/jam_detector.dart';
 import '../domain/trip_stats.dart';
 import 'arrival_sheet.dart';
+import 'car_marker.dart';
 import 'location_banner.dart';
 import 'vote_prompt.dart';
 import 'widgets.dart';
@@ -72,6 +73,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
 
   LatLng? _here; // smoothed, road-snapped position, updated once per GPS fix
   double _speedMps = 0;
+  double _accuracyM = 10; // how far off the position could be (shown as a circle when not navigating)
 
   final _stats = TripStats(); // arrival summary, on this phone only
   final _jam = JamDetector();
@@ -216,19 +218,27 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
     if (filtered == null) return; // junk fix, ignore it
 
     final routing = ref.read(routingProvider.notifier);
-    routing.onPosition(filtered.position);
-    final snap = routing.snap(filtered.position);
+    // The heading is only trusted while clearly moving; standing still, GPS heading is noise.
+    final heading = filtered.speedMps > 3 ? filtered.headingDeg : null;
+    routing.onPosition(filtered.position, headingDeg: heading);
+    final snap = routing.snap(filtered.position, headingDeg: heading);
     final at = snap?.point ?? filtered.position;
 
+    // While navigating the car glides along the road itself, so it follows bends between fixes.
+    final nav = ref.read(routingProvider);
+    final plan = nav.navigating ? nav.plan : null;
+    _motion.setRoute(plan?.shape, plan?.cumulativeM);
     _motion.onFix(
       at,
       speedMps: filtered.speedMps,
       headingDeg: snap?.bearingDeg ?? filtered.headingDeg,
       now: _now,
+      alongM: snap?.alongM,
     );
     setState(() {
       _here = at;
       _speedMps = filtered.speedMps;
+      _accuracyM = filtered.accuracyM;
     });
 
     _stats.add(at, filtered.speedMps);
@@ -480,6 +490,25 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
                     ),
                 ],
               ),
+              // How sure the GPS is, like other map apps. Only when browsing; while driving the car
+              // sits on the road and the circle would just get in the way.
+              if (!nav.navigating)
+                ValueListenableBuilder<CarPose?>(
+                  valueListenable: _pose,
+                  builder: (context, pose, _) => CircleLayer(
+                    circles: [
+                      if (pose != null)
+                        CircleMarker(
+                          point: pose.position,
+                          radius: _accuracyM,
+                          useRadiusInMeter: true,
+                          color: const Color(0x2633A1FF),
+                          borderColor: const Color(0x6633A1FF),
+                          borderStrokeWidth: 1,
+                        ),
+                    ],
+                  ),
+                ),
               // The car has its own layer so only it redraws on every frame.
               ValueListenableBuilder<CarPose?>(
                 valueListenable: _pose,
@@ -491,7 +520,10 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
                         width: 72,
                         height: 72,
                         rotate: turned,
-                        child: HatchAvatar(headingDeg: turned ? 0 : pose.headingDeg),
+                        child: CarMarker(
+                          headingDeg: turned ? 0 : pose.headingDeg,
+                          braking: pose.braking,
+                        ),
                       ),
                   ],
                 ),

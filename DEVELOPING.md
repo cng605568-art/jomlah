@@ -216,3 +216,23 @@ Real GPS is ignored while it runs, and it stops when the trip ends or is cancell
 `.github/workflows/checks.yml` runs `dart analyze` and `flutter test` on every push to a branch other
 than `main` (and on pull requests). Problems show up as annotations on the run summary, with file
 and line. It does not build an APK; `main` still runs the full build, tests included.
+
+## Step 13: car follows the road, GPS bounce filter, U-turn fix, new car
+- `CarMotion` now has a route mode. While navigating, `MapScreen` passes the route (`setRoute`) and
+  each snapped fix's distance along it (`RouteSnap.alongM`). Between fixes the car moves along the
+  route line at its speed, closing any gap over about 0.5 s, so it follows bends and turns with the
+  road instead of shooting straight on and snapping back (the old animation went about 8 m off the
+  road at a 90 degree corner at 54 km/h). While driving it never slides backwards. Off the route it
+  still coasts along its last velocity. Any mismatch (joining the route, a new route) is blended away
+  over about 0.35 s, so the car never jumps unless it is more than 150 m off (app resumed).
+- `GpsFilter` gives less weight to a fix that lands far outside what the track allows (chi-square
+  gate, 99%), which is what GPS does between tall buildings. Three such fixes in a row are believed.
+  In a test with two fixes bounced 35 m sideways, the car moved 6.4 m instead of 13 m.
+  `FilteredFix.accuracyM` is the filter's own uncertainty; the map shows it as a blue circle when
+  not navigating.
+- Snapping and route tracking skip route segments that point more than 100 degrees away from the
+  car's heading (only used above 3 m/s). On Malaysian U-turn routes the way back runs right beside
+  the way out; before, the car could be put on the way back and the U-turn instruction skipped.
+- The car is drawn in code (`car_marker.dart`): blue and lime like the app icon, white outline,
+  headlights, and brake lights that glow for 1.5 s after slowing by more than 1.2 m/s per second.
+  `assets/avatar/hatch_top.png` is no longer used.

@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,38 +5,7 @@ import 'package:latlong2/latlong.dart';
 import '../application/providers.dart';
 import '../domain/report.dart';
 
-/// The user's car. North-up map for the MVP, so we rotate by GPS heading.
-class HatchAvatar extends StatelessWidget {
-  const HatchAvatar({super.key, required this.headingDeg});
-  final double headingDeg; // degrees clockwise from north, -1 if unknown
-
-  @override
-  Widget build(BuildContext context) {
-    final angle = (headingDeg < 0 ? 0.0 : headingDeg) * math.pi / 180;
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        Container(
-          width: 64,
-          height: 64,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            color: Color(0x40C8FF3D), // soft neon halo
-          ),
-        ),
-        Transform.rotate(
-          angle: angle,
-          child: Image.asset(
-            'assets/avatar/hatch_top.png',
-            width: 40,
-            errorBuilder: (context, error, stack) =>
-                const Icon(Icons.directions_car_filled, size: 40),
-          ),
-        ),
-      ],
-    );
-  }
-}
+// The driver's car is drawn by CarMarker (car_marker.dart).
 
 class ReportPin extends StatelessWidget {
   const ReportPin({super.key, required this.report});

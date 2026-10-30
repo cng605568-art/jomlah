@@ -104,6 +104,40 @@ void main() {
     }
   });
 
+  test('a fix bounced off a tall building barely moves the car', () {
+    // The phone claims 6 m accuracy but puts us 35 m to the side for two fixes.
+    final f = GpsFilter();
+    var during = 0.0, after = 0.0;
+    for (var i = 0; i < 40; i++) {
+      final tp = truth(i.toDouble());
+      final (ne, nn) = noise(i, 4.0);
+      var meas = offsetM(tp, ne, nn);
+      if (i == 20 || i == 21) meas = offsetM(tp, 35, 0);
+      final out = f.accept(fix(meas, t: i.toDouble()))!;
+      final e = haversineM(out.position, tp);
+      if (i == 20 || i == 21) {
+        during = math.max(during, e);
+      } else if (i >= 22) {
+        after = math.max(after, e);
+      }
+    }
+    expect(during, lessThan(8.0)); // without the gate: about 13 m
+    expect(after, lessThan(7.0)); // without the gate: about 10.6 m
+  });
+
+  test('reports how sure it is, getting surer with good fixes', () {
+    final f = GpsFilter();
+    final first = f.accept(fix(truth(0), t: 0))!;
+    expect(first.accuracyM, closeTo(6, 0.01));
+    FilteredFix? last;
+    for (var i = 1; i < 20; i++) {
+      final (ne, nn) = noise(i, 4.0);
+      last = f.accept(fix(offsetM(truth(i.toDouble()), ne, nn), t: i.toDouble()));
+    }
+    expect(last!.accuracyM, lessThan(6));
+    expect(last.accuracyM, greaterThanOrEqualTo(3));
+  });
+
   test('stops ignoring bad fixes after 5 in a row (tunnel, car park)', () {
     final f = GpsFilter();
     FilteredFix? at15;

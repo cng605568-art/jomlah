@@ -27,11 +27,15 @@ class FilteredFix {
     required this.position,
     required this.speedMps,
     required this.headingDeg,
+    this.accuracyM = 10,
   });
 
   final LatLng position;
   final double speedMps;
   final double headingDeg;
+
+  /// How sure the filter is about [position]: roughly the radius, in metres, it could be off by.
+  final double accuracyM;
 }
 
 /// Cleans up raw GPS so the car does not jitter or jump.
@@ -39,6 +43,9 @@ class FilteredFix {
 /// 1. Throws away junk: very inaccurate fixes and sudden "teleports".
 /// 2. Runs a Kalman filter that tracks position AND velocity. It uses the phone's own speed and
 ///    heading as extra evidence, which smooths jitter without making the car lag behind.
+/// 3. Gives less say to a fix that lands far from where the car must be, even when the phone claims
+///    it is accurate. Between tall buildings GPS bounces off walls and can put you 30-40 m sideways
+///    for a second or two. If it keeps insisting (3 fixes in a row), it is believed again.
 class GpsFilter {
   GpsFilter({this.maxAccuracyM = 35, this.maxSpeedMps = 70, double accelNoise = 2.0})
       : _q = accelNoise * accelNoise;
@@ -46,6 +53,10 @@ class GpsFilter {
   final double maxAccuracyM;
   final double maxSpeedMps;
   final double _q; // how hard a car may accelerate or turn, squared
+
+  /// 99% of honest fixes fall inside this (chi-square, 2 degrees of freedom).
+  static const _gate = 9.21;
+  int _outliers = 0; // fixes in a row that landed outside the gate
 
   LatLng? _origin; // the estimate is kept relative to this point (re-anchored every fix)
   double _px = 0, _py = 0; // metres east / north of _origin
@@ -59,6 +70,7 @@ class GpsFilter {
     _origin = null;
     _time = null;
     _rejected = 0;
+    _outliers = 0;
     _px = _py = _vx = _vy = 0;
   }
 
@@ -81,6 +93,7 @@ class GpsFilter {
     _pvv = 4.0;
     _time = fix.time;
     _rejected = 0;
+    _outliers = 0;
   }
 
   /// The cleaned-up reading, or null when this fix was judged to be junk and ignored.
@@ -124,11 +137,21 @@ class GpsFilter {
     // Update 1: where GPS says we are.
     final zx = (fix.position.longitude - origin.longitude) * _mPerDegLng(origin.latitude);
     final zy = (fix.position.latitude - origin.latitude) * _mPerDegLat;
-    final s = ppp + acc * acc;
-    final kp = ppp / s;
-    final kv = ppv / s;
     final yx = zx - _px;
     final yy = zy - _py;
+    var r = acc * acc;
+    var s = ppp + r;
+    // Far outside what the track allows: trust it only as much as the edge of the gate.
+    final d2 = (yx * yx + yy * yy) / s;
+    if (d2 > _gate && _outliers < 3) {
+      _outliers++;
+      r *= d2 / _gate;
+      s = ppp + r;
+    } else {
+      _outliers = 0;
+    }
+    final kp = ppp / s;
+    final kv = ppv / s;
     _px += kp * yx;
     _vx += kv * yx;
     _py += kp * yy;
@@ -188,6 +211,11 @@ class GpsFilter {
     if (speed > 1.5) {
       _heading = (math.atan2(_vx, _vy) * 180 / math.pi + 360) % 360;
     }
-    return FilteredFix(position: _origin!, speedMps: speed, headingDeg: _heading);
+    return FilteredFix(
+      position: _origin!,
+      speedMps: speed,
+      headingDeg: _heading,
+      accuracyM: math.max(3.0, math.sqrt(_ppp)),
+    );
   }
 }
