@@ -6,38 +6,40 @@
 <title>Jomlah: Muat turun / Download / 下载</title>
 <meta name="description" content="Jomlah, free navigation app built in Malaysia (beta). Download for Android.">
 <style>
+  /* Same dark blue as the app. */
   :root {
-    --bg: #fff8ee; --card: #ffffff; --ink: #1b1f3b; --muted: #4a4f6b;
-    --accent: #c8ff3d; --accent-ink: #1b1f3b; --line: #d9d3c7; --warn: #fff0c2;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #0e1224; --card: #171c36; --ink: #f4f6ff; --muted: #b9bfdc;
-      --accent: #c8ff3d; --accent-ink: #0e1224; --line: #2c3358; --warn: #3a3414;
-    }
+    --bg: #0b1430; --card: #111c3d; --raised: #1a2a55; --ink: #f4f7ff; --muted: #a9b6d6;
+    --accent: #3b82f6; --accent-deep: #2563eb; --line: #2b3a67; --warn: #2a2210; --warn-line: #f59e0b;
+    color-scheme: dark;
   }
   * { box-sizing: border-box; }
   html { font-size: 20px; }
   body {
-    margin: 0; padding: 16px; background: var(--bg); color: var(--ink);
+    margin: 0; padding: 16px; color: var(--ink);
+    background: radial-gradient(900px 420px at 50% -120px, #1d3f9a 0%, rgba(11, 20, 48, 0) 70%), var(--bg);
+    background-attachment: fixed;
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Noto Sans SC", sans-serif;
     line-height: 1.5;
   }
   main { max-width: 640px; margin: 0 auto; }
-  h1 { font-size: 2.2rem; margin: 8px 0 0; }
+  .brand { display: flex; align-items: center; gap: 14px; margin: 8px 0 0; }
+  .brand img { width: 64px; height: 64px; border-radius: 16px; box-shadow: 0 6px 20px rgba(0, 0, 0, .45); }
+  h1 { font-size: 2.2rem; margin: 0; letter-spacing: -0.5px; }
   h2 { font-size: 1.3rem; margin: 28px 0 8px; }
   .tag { margin: 0 0 16px; color: var(--muted); }
-  .langs { display: flex; gap: 8px; margin: 12px 0 8px; }
+  .langs { display: flex; gap: 8px; margin: 16px 0 8px; }
   .langs button {
-    flex: 1; min-height: 52px; font: inherit; font-weight: 700; color: var(--ink);
-    background: var(--card); border: 2px solid var(--line); border-radius: 14px;
+    flex: 1; min-height: 52px; font: inherit; font-weight: 700; color: var(--ink); cursor: pointer;
+    background: var(--raised); border: 2px solid var(--line); border-radius: 14px;
   }
-  .langs button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+  .langs button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: #fff; }
   .download {
     display: block; text-align: center; text-decoration: none; font-weight: 800; font-size: 1.3rem;
-    padding: 20px 16px; min-height: 72px; border-radius: 18px;
-    background: var(--accent); color: var(--accent-ink); margin: 12px 0;
+    padding: 20px 16px; min-height: 72px; border-radius: 18px; margin: 12px 0;
+    background: linear-gradient(135deg, var(--accent), var(--accent-deep)); color: #fff;
+    box-shadow: 0 8px 24px rgba(37, 99, 235, .45);
   }
+  .download:active { transform: translateY(1px); }
   ol { padding: 0; margin: 0; list-style: none; counter-reset: step; }
   ol li {
     counter-increment: step; position: relative; background: var(--card);
@@ -45,22 +47,23 @@
   }
   ol li::before {
     content: counter(step); position: absolute; left: 14px; top: 12px; width: 38px; height: 38px;
-    border-radius: 50%; background: var(--accent); color: var(--accent-ink);
+    border-radius: 50%; background: var(--accent); color: #fff;
     font-weight: 800; display: grid; place-items: center;
   }
   .ver { text-align: center; color: var(--muted); margin: 0 0 8px; font-size: 0.85rem; }
   .box { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; margin: 12px 0; }
-  .warn { background: var(--warn); }
+  .warn { background: var(--warn); border-color: var(--warn-line); }
   footer { margin: 28px 0 12px; color: var(--muted); font-size: 0.85rem; }
   footer a { color: inherit; }
   .js section[data-lang]:not(.active) { display: none; }
   section[data-lang] + section[data-lang] { margin-top: 36px; border-top: 2px solid var(--line); padding-top: 12px; }
   .js section[data-lang] + section[data-lang] { margin-top: 0; border-top: 0; padding-top: 0; }
 </style>
+<link rel="icon" href="icon.png">
 </head>
 <body>
 <main>
-  <h1>Jomlah 🚗</h1>
+  <div class="brand"><img src="icon.png" alt="" width="64" height="64"><h1>Jomlah</h1></div>
 
   <div class="langs" role="group" aria-label="Language / Bahasa / 语言">
     <button type="button" data-set="ms">Bahasa Melayu</button>
@@ -74,7 +77,7 @@
     <p class="ver" hidden></p>
     <h2>Cara pasang (5 langkah)</h2>
     <ol>
-      <li>Tekan butang hijau di atas. Tunggu fail siap dimuat turun.</li>
+      <li>Tekan butang biru di atas. Tunggu fail siap dimuat turun.</li>
       <li>Buka fail itu. Ketik pada notifikasi, atau cari dalam app “Fail”.</li>
       <li>Kalau telefon tanya tentang “sumber tidak dikenali”: tekan “Tetapan”, hidupkan “Benarkan”, kemudian tekan butang kembali.</li>
       <li>Kalau keluar amaran Play Protect: tekan “Maklumat lanjut”, kemudian “Pasang juga”.</li>
@@ -90,7 +93,7 @@
     <p class="ver" hidden></p>
     <h2>How to install (5 steps)</h2>
     <ol>
-      <li>Tap the green button above. Wait for the file to finish downloading.</li>
+      <li>Tap the blue button above. Wait for the file to finish downloading.</li>
       <li>Open the file. Tap the notification, or find it in your “Files” app.</li>
       <li>If the phone asks about “unknown sources”: tap “Settings”, switch on “Allow”, then press back.</li>
       <li>If a Play Protect warning appears: tap “More details”, then “Install anyway”.</li>
@@ -106,7 +109,7 @@
     <p class="ver" hidden></p>
     <h2>安装方法（5 步）</h2>
     <ol>
-      <li>按上面的绿色按钮，等文件下载完成。</li>
+      <li>按上面的蓝色按钮，等文件下载完成。</li>
       <li>打开下载好的文件。点通知，或在“文件”应用里找。</li>
       <li>如果手机提示“未知来源”：点“设置”，打开“允许”，然后按返回。</li>
       <li>如果出现 Play Protect 警告：点“更多详情”，再点“仍然安装”。</li>
@@ -145,26 +148,33 @@
   setAll('data-issues', base + '/issues');
   setAll('data-privacy', base + '/blob/main/PRIVACY.md');
 
-  // GitHub's "latest" link ignores pre-releases, so ask the API for the newest release of any kind
-  // and use the .apk attached to it. If that fails, the links above still open the releases list.
+  // GitHub's "latest" link ignores pre-releases, so ask the API for the releases and pick the newest
+  // one (any kind) that already has its .apk attached. A release whose app is still being built is
+  // skipped until the file is there. If anything fails, the links above still open the releases list.
   if (window.fetch) {
-    fetch('https://api.github.com/repos/' + owner + '/' + repo + '/releases?per_page=10', {
+    fetch('https://api.github.com/repos/' + owner + '/' + repo + '/releases?per_page=20', {
       headers: { 'Accept': 'application/vnd.github+json' }
     })
       .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
       .then(function (list) {
-        var rel = null;
-        for (var i = 0; i < list.length && !rel; i++) if (!list[i].draft) rel = list[i];
-        if (!rel) return;
-        var apk = null;
-        for (var j = 0; j < (rel.assets || []).length && !apk; j++) {
-          if (/\.apk$/i.test(rel.assets[j].name)) apk = rel.assets[j];
+        var best = null, bestApk = null, bestWhen = '';
+        for (var i = 0; i < list.length; i++) {
+          var rel = list[i];
+          if (rel.draft) continue;
+          var apk = null;
+          for (var j = 0; j < (rel.assets || []).length && !apk; j++) {
+            if (/\.apk$/i.test(rel.assets[j].name)) apk = rel.assets[j];
+          }
+          if (!apk) continue;
+          var when = rel.published_at || rel.created_at || '';
+          if (!best || when > bestWhen) { best = rel; bestApk = apk; bestWhen = when; }
         }
-        if (apk) setAll('data-apk', apk.browser_download_url);
-        setAll('data-release', rel.html_url);
+        if (!best) return;
+        setAll('data-apk', bestApk.browser_download_url);
+        setAll('data-release', best.html_url);
         var vers = d.querySelectorAll('.ver');
         for (var k = 0; k < vers.length; k++) {
-          vers[k].textContent = rel.name || rel.tag_name;
+          vers[k].textContent = best.name || best.tag_name;
           vers[k].hidden = false;
         }
       })

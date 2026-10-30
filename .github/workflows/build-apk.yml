@@ -4,7 +4,7 @@ on:
   workflow_dispatch:        # lets you press "Run workflow" from the GitHub app or site
   push:
     branches: [main]
-    tags: ['v*']            # pushing a tag like v0.1.0 also publishes a Release
+    tags: ['v*', 'V*']      # pushing a tag like v0.1.0 (or V0.1.0) also publishes a Release
 
 permissions:
   contents: write           # needed to attach the APK to a Release
@@ -163,7 +163,7 @@ jobs:
           # "dev build N" where N is this run's number on the Actions page. Android's version code
           # is the run number, so every build counts up.
           args+=("--build-number=$GITHUB_RUN_NUMBER")
-          if [[ "$GITHUB_REF" == refs/tags/v* && "$GITHUB_REF_NAME" =~ ^v([0-9]+\.[0-9]+\.[0-9]+) ]]; then
+          if [[ "$GITHUB_REF" == refs/tags/[vV]* && "$GITHUB_REF_NAME" =~ ^[vV]([0-9]+\.[0-9]+\.[0-9]+) ]]; then
             args+=("--build-name=${BASH_REMATCH[1]}")
             app_version="$GITHUB_REF_NAME"
           else
@@ -252,10 +252,12 @@ jobs:
       # such file, the release keeps whatever title and notes were typed on GitHub's website.
       - name: Find release notes (tags only)
         id: notes
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') # case-insensitive, so V tags match too
         shell: bash
         run: |
           f="release-notes/${GITHUB_REF_NAME}.md"
+          # A capital V in the tag still finds release-notes/v....md
+          [ -f "$f" ] || f="release-notes/v${GITHUB_REF_NAME:1}.md"
           if [ -f "$f" ]; then
             first=$(head -n 1 "$f")
             if [[ "$first" == "# "* ]]; then
