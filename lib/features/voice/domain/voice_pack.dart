@@ -140,12 +140,16 @@ String spokenDistance(double m, VoicePack pack) {
 }
 
 /// Where an exit leads, for speaking: the first two places, skipping route codes such as "E26"
-/// when there are real names. Joined with a comma (a "/" would be read out as "slash").
+/// when there are real names, and skipping the exit's own name (already said by {exit}: "exit
+/// 2 1 8, Seremban, ke arah Labu", not "... Seremban, ke arah Seremban"). Joined with a comma
+/// (a "/" would be read out as "slash").
 String spokenToward(ExitSign? sign) {
   if (sign == null || sign.toward.isEmpty) return '';
   final code = RegExp(r'^([A-Z]{1,3}\s?)?\d+[A-Z]?$'); // E26, B13, FT2, or a bare number
+  final exitName = sign.name.isEmpty ? '' : sign.name.first.trim().toLowerCase();
   final names = sign.toward.where((t) => !code.hasMatch(t.trim())).toList();
-  return (names.isEmpty ? sign.toward.take(1) : names.take(2)).join(', ');
+  if (names.isEmpty) return sign.toward.first; // only route codes: say the first one
+  return names.where((t) => t.trim().toLowerCase() != exitName).take(2).join(', ');
 }
 
 /// The exit as said out loud: "exit 2 0 9, UPM", "exit 3 3 0 6 C", or "exit Salak". The number

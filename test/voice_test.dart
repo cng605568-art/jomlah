@@ -70,6 +70,11 @@ void main() {
     expect(spokenToward(const ExitSign(toward: ['E7', '1'])), 'E7'); // only codes: say the first
     expect(spokenToward(const ExitSign(number: ['5'])), '');
     expect(spokenToward(const ExitSign(toward: ['Pandan-Tebrau'])).contains('/'), isFalse);
+    // Real PLUS exit 218: named Seremban, signed to Seremban and Labu. Say Seremban once.
+    const exit218 = ExitSign(number: ['218'], name: ['Seremban'], toward: ['Seremban', 'Labu']);
+    expect(spokenExit(exit218), 'exit 2 1 8, Seremban');
+    expect(spokenToward(exit218), 'Labu');
+    expect(spokenToward(const ExitSign(name: ['Seremban'], toward: ['Seremban'])), '');
   });
 
   test('roundabout exits are counted in each voice', () {

@@ -255,6 +255,28 @@ and line. It does not build an APK; `main` still runs the full build, tests incl
   `remainingFromDistance`), so it always starts exactly at the car. Before, it was cut only once per
   GPS fix, which left up to a second of line behind the car (about 25 m at 90 km/h).
 
+## Step 15: lane arrows, exit voice, alerts in Simulasi
+- **Lanes.** Valhalla's own JSON has no lane details, but its OSRM output does. After Jom! (and after a
+  reroute) `ValhallaClient.lanes` sends the route's encoded shape to `/trace_route` with
+  `shape_match: edge_walk` and `format: osrm`. Each OSRM step starts at one of our maneuvers (tested:
+  same count, 0 m apart, for main and alternate routes); `intersections[0].lanes` are the lanes into
+  that turn, left to right, with `active` (lane to be in), `valid` (also fine) and `valid_indication`.
+  `parseLanes` keys them by `Maneuver.beginIndex`. `nextTurnLanesProvider` shows them from 2 km out,
+  and `TurnCard` draws them with `LaneRow`. Lanes that all lead our way are dropped (nothing to choose).
+  Coverage on the public server (Oct 2026): roughly half of highway forks and exits around KL, few
+  town turns. Missing lanes are an OSM data gap (`turn:lanes` tags), good work for volunteers.
+- **Exit voice.** `{exit}` = exit number read digit by digit plus the interchange name ("exit 2 0 9,
+  UPM"); `{toward}` for speech = first two destinations, without route codes, joined by commas (a "/"
+  was read as "slash"); `{nth}` = roundabout exit (`roundabout_exit_count`). `pickLine` prefers the
+  line that uses the most of these. `thenPhrase` adds "Lepas tu terus ..." when the following turn is
+  within max(200 m, 12 s at current speed).
+- **Alerts in Simulasi.** Road alerts were checked against the raw GPS stream, so a pretend drive
+  never triggered them. `VoiceFeed.onFix` now gets every cleaned-up fix from `MapScreen._processFix`
+  (real and pretend). In demo mode Simulasi adds a practice camera and police alert a third and two
+  thirds along routes of 1.5 km or more (`practiceAlertSpots`), removed when the simulation stops.
+- Widget tests for the trip screens (`test/nav_flow_test.dart`), and the Checks workflow now shows a
+  failing widget test's printed exception in its annotation.
+
 ## Publishing a release
 - Write `release-notes/<tag>.md` (first line `# Title`, then the notes) and commit it to `main`.
 - Then on GitHub: Releases > Draft a new release > type the tag (e.g. `v1.0.4(BETA)`), "Create new tag

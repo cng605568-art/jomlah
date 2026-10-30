@@ -48,6 +48,10 @@ sit with them for the five steps. Only install apps from links you trust.
 - A speed limit sign next to your speed where OpenStreetMap knows the limit; your speed turns red
   when you are 5 km/j or more over it, and the voice reminds you once per stretch of road
 - Highway exit signs on the turn card (exit number and where it leads), and a "Tol" tag on route options that use toll roads, where OpenStreetMap has the data
+- Lane arrows under the turn card at junctions where OpenStreetMap has lane markings (about half the
+  highway exits and forks around KL in our tests): the lane to be in is highlighted
+- The voice names the exit ("exit 2 0 9, UPM, ke arah Serdang"), says which roundabout exit to take,
+  and warns about a second turn that comes right after the first ("lepas tu terus ambil kiri")
 - A car that glides along the road itself between GPS readings, following bends and turning with
   the road, with brake lights when you slow down; a circle shows how sure the GPS is while you browse
 - The map turns with your direction while you drive, with the road ahead in view (switch to north-up in Settings)
@@ -59,7 +63,8 @@ sit with them for the five steps. Only install apps from links you trust.
 ## What does not work yet
 
 - Alerts in this beta are **samples** and are not shared between users yet
-- No live traffic, no lane-by-lane guidance, no offline maps, no CarPlay or Android Auto
+- No live traffic, no offline maps, no CarPlay or Android Auto
+- Lane arrows only appear where OpenStreetMap has lane markings; many town junctions have none yet
 - Speed limits are missing on many roads, because OpenStreetMap does not have them everywhere yet.
   Where the limit is unknown, no sign is shown (the app never guesses). Road signs always win
 - It can be wrong, especially at complex junctions. Road signs and the law come first
@@ -71,8 +76,10 @@ sit with them for the five steps. Only install apps from links you trust.
 After you pick a destination, tap **Simulasi** next to **Jom!** and choose a speed. The app then
 drives the route by itself, so you can see the map follow, hear the voice, and watch the arrival
 summary from your sofa. Pick 8 km/j to see the "jem" prompt after two minutes. Pick 60 km/j on a
-city route to see the speed limit sign and hear the "slow down" reminder in a 50 zone. The real GPS is
-ignored while a simulation runs. You can also test for real as a passenger on a bus or in a
+city route to see the speed limit sign and hear the "slow down" reminder in a 50 zone. On routes of
+1.5 km or more, the simulation puts a practice speed camera and police alert on the road ahead, so you
+can hear the alert voices (practice alerts stay on your phone and disappear when the simulation ends).
+The menu remembers the speed you picked last time. The real GPS is ignored while a simulation runs. You can also test for real as a passenger on a bus or in a
 friend's car.
 
 ## If the location stops updating
