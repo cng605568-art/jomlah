@@ -1,0 +1,44 @@
+name: Probe speed limits (temporary)
+on:
+  push:
+    branches: [probe-speed-limits]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ask Valhalla for speed limits along three Malaysian routes
+        shell: python3 {0}
+        run: |
+          import json, urllib.request, urllib.error
+          BASE = 'https://valhalla1.openstreetmap.de'
+          def post(action, body):
+              req = urllib.request.Request(BASE + '/' + action, data=json.dumps(body).encode(),
+                  headers={'Content-Type': 'application/json', 'User-Agent': 'jomlah-probe (github.com/cng605568-art/jomlah)'})
+              try:
+                  with urllib.request.urlopen(req, timeout=60) as r:
+                      return r.status, json.loads(r.read())
+              except urllib.error.HTTPError as e:
+                  return e.code, e.read().decode(errors='replace')[:400]
+          cases = {
+              'KL city': [(3.1579, 101.7116), (3.1466, 101.7101)],
+              'PLUS Nilai-Seremban': [(2.8150, 101.7980), (2.7258, 101.9424)],
+              'Federal Hwy PJ-KL': [(3.0860, 101.6200), (3.1170, 101.6770)],
+          }
+          for name, pts in cases.items():
+              st, r = post('route', {'locations': [{'lat': a, 'lon': b} for a, b in pts], 'costing': 'auto'})
+              if st != 200:
+                  print(f'::error title={name} route::HTTP {st} {r}'); continue
+              leg = r['trip']['legs'][0]
+              for match in ('edge_walk', 'map_snap'):
+                  st, t = post('trace_attributes', {'encoded_polyline': leg['shape'], 'costing': 'auto', 'shape_match': match,
+                      'filters': {'attributes': ['edge.speed_limit', 'edge.length', 'edge.names', 'edge.road_class'], 'action': 'include'}})
+                  if st != 200:
+                      print(f'::warning title={name} {match}::HTTP {st} {t}'); continue
+                  edges = t.get('edges', [])
+                  raw = sorted({json.dumps(e.get('speed_limit')) for e in edges})
+                  known = [e for e in edges if isinstance(e.get('speed_limit'), int) and 0 < e['speed_limit'] < 255]
+                  tot = sum(e.get('length', 0) for e in edges); kn = sum(e.get('length', 0) for e in known)
+                  sample = sorted({(e['speed_limit'], (e.get('names') or ['?'])[0], e.get('road_class')) for e in known})[:5]
+                  print(f'::notice title={name} {match}::route {leg["summary"]["length"]} km; edges {len(edges)} totalling {tot:.3f} ({t.get("units")}); '
+                        f'with limit {len(known)} edges = {kn:.3f}; raw speed_limit values {raw}; sample {sample}; first edge {json.dumps(edges[0]) if edges else None}')
