@@ -50,7 +50,7 @@ jobs:
           flutter test --machine > tests.jsonl 2> tests.err || true
           python3 - <<'PY'
           import json, sys
-          names, errors, failed, ok, events = {}, {}, [], None, 0
+          names, errors, prints, failed, ok, events = {}, {}, {}, [], None, 0
           for line in open('tests.jsonl', errors='replace'):
               try:
                   ev = json.loads(line)
@@ -64,12 +64,24 @@ jobs:
                   names[ev['test']['id']] = ev['test']['name']
               elif t == 'error':
                   errors.setdefault(ev['testID'], []).append(ev.get('error', ''))
+              elif t == 'print':
+                  prints.setdefault(ev.get('testID'), []).append(ev.get('message', ''))
               elif t == 'testDone' and ev.get('result') != 'success' and not ev.get('hidden'):
                   failed.append(ev['testID'])
               elif t == 'done':
                   ok = ev.get('success')
           for tid in failed[:20]:
-              text = ' | '.join(errors.get(tid, ['failed']))[:900]
+              text = ' | '.join(errors.get(tid, ['failed']))
+              # Widget test exceptions are printed, and the error only says "see logs above":
+              # put the printed exception (what went wrong, and where) in the annotation instead.
+              log = '\n'.join(prints.get(tid, []))
+              if 'logs above' in text and log:
+                  start = log.find('EXCEPTION CAUGHT')
+                  log = log[start:] if start >= 0 else log
+                  keep = [l for l in log.splitlines() if l.strip() and not l.startswith('══')
+                          and 'package:flutter/' not in l and 'dart:async' not in l]
+                  text = '\n'.join(keep)
+              text = text[:1500]
               text = text.replace('%', '%25').replace('\r', '').replace('\n', '%0A')
               print(f'::error title=Test failed: {names.get(tid, tid)}::{text}')
           if not failed and ok is not True:

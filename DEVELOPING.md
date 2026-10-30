@@ -23,6 +23,9 @@ The APK then appears under **Releases**.
   uninstall once and reinstall. Never commit the key (`.gitignore` blocks `*.p12`).
   The same key can later serve as the Google Play upload key.
 - Map tiles come from OSM's public server for dev only. Self-host before real traffic.
+- `pubspec.lock` is committed, so every build uses the same plugin versions and a new plugin
+  release cannot break the APK by surprise. To update plugins on purpose, run `flutter pub upgrade`
+  somewhere with Flutter (or a CI job) and commit the new lockfile.
 - GitHub's build machines don't include the exact Android NDK Flutter asks for, so the step
   **Install Android NDK (with retries)** (`.github/scripts/install-ndk.sh`) downloads it first, up to
   3 times, and otherwise builds with the closest NDK already on the machine. Without it, Gradle
