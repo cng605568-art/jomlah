@@ -50,12 +50,15 @@ jobs:
           flutter test --machine > tests.jsonl 2> tests.err || true
           python3 - <<'PY'
           import json, sys
-          names, errors, failed, ok = {}, {}, [], None
+          names, errors, failed, ok, events = {}, {}, [], None, 0
           for line in open('tests.jsonl', errors='replace'):
               try:
                   ev = json.loads(line)
               except ValueError:
                   continue
+              if not isinstance(ev, dict):
+                  continue  # flutter also prints [{"event": ...}] daemon lines; not test results
+              events += 1
               t = ev.get('type')
               if t == 'testStart':
                   names[ev['test']['id']] = ev['test']['name']
@@ -69,9 +72,12 @@ jobs:
               text = ' | '.join(errors.get(tid, ['failed']))[:900]
               text = text.replace('%', '%25').replace('\r', '').replace('\n', '%0A')
               print(f'::error title=Test failed: {names.get(tid, tid)}::{text}')
-          if ok is None:
-              tail = open('tests.err', errors='replace').read()[-900:].replace('%', '%25').replace('\n', '%0A')
-              print(f'::error title=flutter test did not finish::{tail}')
-          print(f'Tests: {len(failed)} failed, finished={ok}')
+          if not failed and ok is not True:
+              tail = open('tests.err', errors='replace').read()[-900:]
+              last = ''.join(open('tests.jsonl', errors='replace').readlines()[-3:])[-600:]
+              text = (tail + '\n---\n' + last).replace('%', '%25').replace('\r', '').replace('\n', '%0A')
+              print(f'::error title=flutter test did not finish cleanly::{text}')
+          print(f'::notice title=Test summary::{len(names)} tests started, {len(failed)} failed, '
+                f'{events} events, finished={ok}')
           sys.exit(0 if ok and not failed else 1)
           PY
