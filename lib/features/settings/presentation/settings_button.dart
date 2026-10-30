@@ -7,6 +7,7 @@ import '../../routing/application/route_prefs_provider.dart';
 import '../../routing/domain/route_prefs.dart';
 import '../../voice/application/voice_providers.dart';
 import '../../voice/domain/voice_packs.dart';
+import '../../../core/app_theme.dart';
 
 class SettingsButton extends ConsumerWidget {
   const SettingsButton({super.key});
@@ -68,7 +69,7 @@ class SettingsButton extends ConsumerWidget {
                     const Padding(
                       padding: EdgeInsets.symmetric(horizontal: 16),
                       child: Text('Berkuat kuasa pada laluan seterusnya.',
-                          style: TextStyle(fontSize: 12, color: Colors.white70)),
+                          style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
                     ),
                     const _Heading('Arah peta semasa memandu'),
                     Padding(

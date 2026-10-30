@@ -21,7 +21,7 @@ class CarMarker extends StatelessWidget {
             height: 64,
             decoration: const BoxDecoration(
               shape: BoxShape.circle,
-              color: Color(0x40C8FF3D), // soft neon halo
+              color: Color(0x403B82F6), // soft blue halo
             ),
           ),
           Transform.rotate(

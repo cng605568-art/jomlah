@@ -3,11 +3,21 @@ import 'package:latlong2/latlong.dart';
 import '../../../core/geo.dart';
 
 class CarPose {
-  const CarPose(this.position, this.headingDeg, {this.speedMps = 0, this.braking = false});
+  const CarPose(
+    this.position,
+    this.headingDeg, {
+    this.speedMps = 0,
+    this.braking = false,
+    this.alongM,
+  });
   final LatLng position;
   final double headingDeg;
   final double speedMps;
   final bool braking; // slowing down hard: brake lights on
+
+  /// Metres along the route (the one given to [CarMotion.setRoute]) where the car is drawn, or null
+  /// when it is not following a route. The route line ahead is drawn from here.
+  final double? alongM;
 }
 
 /// Makes the car glide between GPS fixes, which only arrive about once a second.
@@ -51,6 +61,9 @@ class CarMotion {
   double? _prevSpeed;
   double _prevSpeedAt = 0;
   double _brakeUntil = -1;
+
+  /// The route set with [setRoute] (the same list object), or null.
+  List<LatLng>? get route => _shape;
 
   /// The road being followed while navigating, or null. A new route is joined smoothly at the next fix.
   void setRoute(List<LatLng>? shape, List<double>? cumulativeM) {
@@ -150,7 +163,13 @@ class CarMotion {
     final diff = ((_targetHeading - _heading + 540) % 360) - 180;
     _heading = (_heading + diff * (1 - math.exp(-dt / (_onRoute ? 0.15 : 0.3))) + 360) % 360;
 
-    return CarPose(drawn, _heading, speedMps: coasting ? _speed : 0, braking: now < _brakeUntil);
+    return CarPose(
+      drawn,
+      _heading,
+      speedMps: coasting ? _speed : 0,
+      braking: now < _brakeUntil,
+      alongM: _onRoute ? _alongShown : null,
+    );
   }
 
   /// Where the car would be right now before any blending.

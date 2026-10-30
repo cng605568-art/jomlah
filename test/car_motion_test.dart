@@ -100,6 +100,26 @@ void main() {
     expect(r.maxTurn, lessThan(6));
   });
 
+  test('reports how far along the route the drawn car is (for trimming the route line)', () {
+    final m = CarMotion()..setRoute(lRoute.shape, lRoute.cum);
+    expect(identical(m.route, lRoute.shape), isTrue);
+    CarPose? pose;
+    for (var frame = 0; frame <= 60 * 5; frame++) {
+      final now = frame / 60.0;
+      if (frame % 60 == 0) {
+        final along = 15.0 * (frame ~/ 60);
+        m.onFix(pointAt(lRoute, along), speedMps: 15, headingDeg: 0, now: now, alongM: along);
+      }
+      pose = m.tick(now);
+    }
+    expect(pose!.alongM, closeTo(75, 3)); // 5 s at 15 m/s
+    expect(toRoute(lRoute, pose.position).along, closeTo(pose.alongM!, 0.5));
+
+    final free = CarMotion();
+    free.onFix(origin, speedMps: 10, headingDeg: 0, now: 0);
+    expect(free.tick(0)!.alongM, isNull); // not following a route
+  });
+
   test('joins the road smoothly when the fixes start snapping onto it', () {
     final m = CarMotion()..setRoute(lRoute.shape, lRoute.cum);
     LatLng? prev;

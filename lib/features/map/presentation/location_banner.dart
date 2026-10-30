@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import '../application/providers.dart';
+import '../../../core/app_theme.dart';
 
 /// Appears only when GPS is off or permission was refused, with a way to fix it.
 class LocationBanner extends ConsumerWidget {
@@ -16,8 +17,11 @@ class LocationBanner extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Material(
-        color: const Color(0xF2171C36),
-        borderRadius: BorderRadius.circular(20),
+        color: AppColors.overlay,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: AppColors.outline),
+        ),
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Column(
@@ -25,7 +29,7 @@ class LocationBanner extends ConsumerWidget {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.location_off, color: Color(0xFFFF4F8B)),
+                  const Icon(Icons.location_off, color: AppColors.warning),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -69,7 +73,7 @@ class StaleGpsBanner extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(top: 8),
         child: Material(
-          color: const Color(0xF2171C36),
+          color: AppColors.overlay,
           borderRadius: BorderRadius.circular(20),
           child: Padding(
             padding: const EdgeInsets.all(14),
@@ -78,7 +82,7 @@ class StaleGpsBanner extends StatelessWidget {
               children: [
                 const Row(
                   children: [
-                    Icon(Icons.gps_not_fixed, color: Color(0xFFFF4F8B)),
+                    Icon(Icons.gps_not_fixed, color: AppColors.warning),
                     SizedBox(width: 10),
                     Expanded(
                       child: Text(

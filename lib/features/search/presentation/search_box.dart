@@ -5,6 +5,7 @@ import '../../map/application/providers.dart';
 import '../application/places_provider.dart';
 import '../application/search_providers.dart';
 import '../domain/place.dart';
+import '../../../core/app_theme.dart';
 
 class SearchBox extends ConsumerStatefulWidget {
   const SearchBox({super.key, required this.onPick});
@@ -97,8 +98,13 @@ class _SearchBoxState extends ConsumerState<SearchBox> {
     final showShortcuts = _focus.hasFocus && !searching;
 
     return Material(
-      color: const Color(0xF2171C36),
-      borderRadius: BorderRadius.circular(24),
+      color: AppColors.overlay,
+      elevation: 6,
+      shadowColor: Colors.black54,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: const BorderSide(color: AppColors.outline),
+      ),
       clipBehavior: Clip.antiAlias,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -113,7 +119,7 @@ class _SearchBoxState extends ConsumerState<SearchBox> {
             },
             decoration: InputDecoration(
               hintText: 'Nak ke mana? (atau tekan lama pada peta)',
-              prefixIcon: const Icon(Icons.search),
+              prefixIcon: const Icon(Icons.search, color: AppColors.sky),
               suffixIcon: _text.text.isEmpty
                   ? null
                   : IconButton(icon: const Icon(Icons.close), onPressed: _reset),
@@ -209,12 +215,12 @@ class _ShortcutCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.white24),
+            color: AppColors.raised,
             borderRadius: BorderRadius.circular(16),
           ),
           child: Row(
             children: [
-              Icon(icon, color: const Color(0xFFC8FF3D)),
+              Icon(icon, color: AppColors.sky),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
@@ -225,7 +231,7 @@ class _ShortcutCard extends StatelessWidget {
                       place?.name ?? 'Belum ditetapkan',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 12, color: Colors.white70),
+                      style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
                     ),
                   ],
                 ),

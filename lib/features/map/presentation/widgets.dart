@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import '../application/providers.dart';
 import '../domain/report.dart';
+import '../../../core/app_theme.dart';
 
 // The driver's car is drawn by CarMarker (car_marker.dart).
 
@@ -19,7 +20,7 @@ class ReportPin extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             shape: BoxShape.circle,
-            border: Border.all(color: const Color(0xFFFF4F8B), width: 3),
+            border: Border.all(color: AppColors.warning, width: 3),
           ),
           child: Text(report.type.emoji, style: const TextStyle(fontSize: 24)),
         ),
@@ -38,7 +39,7 @@ class ReportBar extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
       decoration: const BoxDecoration(
-        color: Color(0xF2171C36),
+        color: AppColors.overlay,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: SingleChildScrollView(
@@ -49,7 +50,12 @@ class ReportBar extends ConsumerWidget {
               Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: FilledButton(
-                  style: FilledButton.styleFrom(minimumSize: const Size(88, 64)),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(88, 64),
+                    backgroundColor: AppColors.raised,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                  ),
                   onPressed: enabled
                       ? () {
                           HapticFeedback.mediumImpact();

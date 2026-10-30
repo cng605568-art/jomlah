@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import '../../../core/app_theme.dart';
 import '../../../core/geo.dart';
 import '../../routing/application/routing_providers.dart';
 import '../../routing/application/speed_limit_providers.dart';
@@ -41,8 +42,6 @@ const _tileUrl = String.fromEnvironment(
   defaultValue: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
 );
 
-const _lime = Color(0xFFC8FF3D);
-const _midnight = Color(0xFF0E1224);
 
 /// Quick night mode: turns the light OSM tiles into dark navy with light labels.
 const _nightFilter = ColorFilter.matrix(<double>[
@@ -437,30 +436,37 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
                 userAgentPackageName: 'my.jomlah',
                 tileBuilder: night ? _nightTiles : null,
               ),
-              if (nav.plan != null)
+              // Choosing a route: every option, the chosen one on top in blue.
+              if (nav.plan != null && nav.previewing)
                 PolylineLayer(
                   polylines: [
-                    if (nav.previewing)
-                      for (var i = 0; i < nav.candidates.length; i++)
-                        if (i != nav.selected)
-                          Polyline(
-                            points: nav.candidates[i].shape,
-                            strokeWidth: 6,
-                            color: const Color(0xFF8A90B0),
-                            borderStrokeWidth: 2,
-                            borderColor: _midnight,
-                          ),
-                    Polyline(
-                      // While driving, only draw what is still ahead, starting at the car.
-                      points: nav.previewing
-                          ? nav.plan!.shape
-                          : remainingShape(nav.plan!.shape, nav.segment, from: here),
-                      strokeWidth: 8,
-                      color: _lime,
-                      borderStrokeWidth: 3,
-                      borderColor: _midnight,
-                    ),
+                    for (var i = 0; i < nav.candidates.length; i++)
+                      if (i != nav.selected)
+                        Polyline(
+                          points: nav.candidates[i].shape,
+                          strokeWidth: 6,
+                          color: AppColors.routeOption,
+                          borderStrokeWidth: 2,
+                          borderColor: AppColors.routeBorder,
+                        ),
+                    _routeLine(nav.plan!.shape),
                   ],
+                ),
+              // Driving: only the road still ahead, starting exactly at the car. Redrawn every frame
+              // with the gliding car, so no stretch of line is left behind it between GPS fixes.
+              if (nav.plan != null && !nav.previewing)
+                ValueListenableBuilder<CarPose?>(
+                  valueListenable: _pose,
+                  builder: (context, pose, _) {
+                    final plan = nav.plan!;
+                    final along = pose?.alongM;
+                    final points = (pose != null && along != null && identical(_motion.route, plan.shape))
+                        ? remainingFromDistance(plan, along, from: pose.position)
+                        : remainingShape(plan.shape, nav.segment, from: pose?.position ?? here);
+                    return PolylineLayer(
+                      polylines: [if (points.length >= 2) _routeLine(points)],
+                    );
+                  },
                 ),
               MarkerLayer(
                 markers: [
@@ -485,7 +491,8 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
                       child: const Icon(
                         Icons.location_on,
                         size: 48,
-                        color: Color(0xFFFF4F8B),
+                        color: AppColors.destination,
+                        shadows: [Shadow(color: Color(0x66000000), blurRadius: 6)],
                       ),
                     ),
                 ],
@@ -607,6 +614,15 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
 
 const _signRed = Color(0xFFD7182A);
 
+/// The route line: bright blue with a dark navy edge, so it reads on light and dark maps.
+Polyline _routeLine(List<LatLng> points) => Polyline(
+      points: points,
+      strokeWidth: 8,
+      color: AppColors.route,
+      borderStrokeWidth: 2.5,
+      borderColor: AppColors.routeBorder,
+    );
+
 class _SpeedBubble extends StatelessWidget {
   const _SpeedBubble({required this.kmh, this.over = false});
   final double kmh;
@@ -618,9 +634,10 @@ class _SpeedBubble extends StatelessWidget {
         height: 60,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: over ? _signRed : const Color(0xF2171C36),
+          color: over ? AppColors.danger : AppColors.overlay,
           shape: BoxShape.circle,
-          border: Border.all(color: over ? Colors.white : _lime, width: 2),
+          border: Border.all(color: over ? Colors.white : AppColors.primary, width: 2.5),
+          boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 6)],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -629,7 +646,10 @@ class _SpeedBubble extends StatelessWidget {
               kmh.round().toString(),
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, height: 1),
             ),
-            const Text('km/j', style: TextStyle(fontSize: 10, color: Colors.white70)),
+            Text(
+              'km/j',
+              style: TextStyle(fontSize: 10, color: over ? Colors.white : AppColors.textMuted),
+            ),
           ],
         ),
       );
@@ -674,8 +694,13 @@ class _JamPrompt extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-        color: const Color(0xF2171C36),
-        borderRadius: BorderRadius.circular(24),
+        color: AppColors.overlay,
+        elevation: 6,
+        shadowColor: Colors.black54,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: const BorderSide(color: AppColors.outline),
+        ),
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Row(
@@ -710,9 +735,13 @@ class _SimPill extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: const Color(0xFFFF4F8B),
+          color: AppColors.overlay,
           borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.cyan, width: 1.5),
         ),
-        child: const Text('🧪 Simulasi', style: TextStyle(fontWeight: FontWeight.w800)),
+        child: const Text(
+          '🧪 Simulasi',
+          style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.cyan),
+        ),
       );
 }

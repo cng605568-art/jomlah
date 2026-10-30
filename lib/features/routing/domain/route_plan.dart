@@ -114,3 +114,20 @@ List<LatLng> remainingShape(List<LatLng> shape, int segment, {LatLng? from}) {
   final start = math.min(math.max(segment + 1, 0), shape.length - 1);
   return [if (from != null) from, ...shape.sublist(start)];
 }
+
+/// The part of [plan] still ahead of the point [alongM] metres from the start, beginning at [from]
+/// (where the car is drawn). Used every frame while driving, so it finds its place by halving.
+List<LatLng> remainingFromDistance(RoutePlan plan, double alongM, {required LatLng from}) {
+  final cum = plan.cumulativeM;
+  var lo = 0;
+  var hi = cum.length; // first index whose distance is beyond alongM
+  while (lo < hi) {
+    final mid = (lo + hi) >> 1;
+    if (cum[mid] <= alongM) {
+      lo = mid + 1;
+    } else {
+      hi = mid;
+    }
+  }
+  return [from, ...plan.shape.sublist(lo)];
+}

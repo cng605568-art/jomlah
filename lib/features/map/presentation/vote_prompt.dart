@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../application/providers.dart';
+import '../../../core/app_theme.dart';
 
 /// "Masih ada Abang Polis?" Two big buttons, gone after 10 seconds.
 class VotePrompt extends ConsumerWidget {
@@ -19,8 +20,13 @@ class VotePrompt extends ConsumerWidget {
     }
 
     return Material(
-      color: const Color(0xF2171C36),
-      borderRadius: BorderRadius.circular(24),
+      color: AppColors.overlay,
+      elevation: 6,
+      shadowColor: Colors.black54,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: const BorderSide(color: AppColors.outline),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Row(

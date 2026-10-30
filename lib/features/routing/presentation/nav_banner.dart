@@ -3,8 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../application/routing_providers.dart';
 import '../domain/route_plan.dart';
-
-const _lime = Color(0xFFC8FF3D);
+import '../../../core/app_theme.dart';
 
 /// Valhalla maneuver type -> icon. Full list: Valhalla docs, "maneuver types".
 IconData maneuverIcon(int type) {
@@ -145,7 +144,8 @@ class NavBanner extends ConsumerWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 14),
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        border: Border.all(color: Colors.white54),
+                        border: Border.all(color: AppColors.outline),
+                        color: AppColors.raised,
                         borderRadius: BorderRadius.circular(26),
                       ),
                       child: const Row(
@@ -176,7 +176,15 @@ class NavBanner extends ConsumerWidget {
       onClose: cancel,
       child: Row(
         children: [
-          Icon(maneuverIcon(next.type), size: 44, color: _lime),
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: AppColors.primary,
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Icon(maneuverIcon(next.type), size: 38, color: Colors.white),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -194,7 +202,7 @@ class NavBanner extends ConsumerWidget {
                   nav.rerouting
                       ? 'Mengira semula…'
                       : 'Tinggal ${formatDistance(nav.remainingM)} · $etaMin min',
-                  style: const TextStyle(fontSize: 12, color: Colors.white70),
+                  style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
                 ),
               ],
             ),
@@ -212,8 +220,13 @@ class _Card extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-        color: const Color(0xF2171C36),
-        borderRadius: BorderRadius.circular(24),
+        color: AppColors.overlay,
+        elevation: 6,
+        shadowColor: Colors.black54,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: const BorderSide(color: AppColors.outline),
+        ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
           child: Row(

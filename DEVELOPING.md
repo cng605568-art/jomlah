@@ -236,3 +236,12 @@ and line. It does not build an APK; `main` still runs the full build, tests incl
 - The car is drawn in code (`car_marker.dart`): blue and lime like the app icon, white outline,
   headlights, and brake lights that glow for 1.5 s after slowing by more than 1.2 m/s per second.
   `assets/avatar/hatch_top.png` is no longer used.
+
+## Step 14: dark blue look, route line trimmed at the car
+- All colours live in `lib/core/app_theme.dart` (`AppColors` plus the Material theme from
+  `buildAppTheme()`): navy background, dark blue cards with a thin outline, blue buttons, cyan and lime
+  as small accents. The route line is blue with a dark navy edge; other route options are grey-blue.
+  Change a colour there and it changes everywhere.
+- The route line while driving is redrawn every frame from the gliding car (`CarPose.alongM` and
+  `remainingFromDistance`), so it always starts exactly at the car. Before, it was cut only once per
+  GPS fix, which left up to a second of line behind the car (about 25 m at 90 km/h).

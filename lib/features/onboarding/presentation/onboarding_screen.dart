@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/app_info.dart';
+import '../../../core/app_theme.dart';
 
 /// Shown once, before the first location permission prompt.
 class OnboardingScreen extends StatelessWidget {
@@ -88,7 +89,7 @@ class _Point extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, size: 32, color: const Color(0xFFC8FF3D)),
+            Icon(icon, size: 32, color: AppColors.sky),
             const SizedBox(width: 16),
             Expanded(
               child: Column(

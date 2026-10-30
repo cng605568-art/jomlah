@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../search/application/places_provider.dart';
 import '../../search/domain/place.dart';
 import '../domain/trip_stats.dart';
+import '../../../core/app_theme.dart';
 
 /// Shown when you arrive: how the trip went, and a shortcut to save the place.
 Future<void> showArrivalSheet(
@@ -26,7 +27,7 @@ Future<void> showArrivalSheet(
             if (place != null)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text(place.name, style: const TextStyle(fontSize: 16, color: Colors.white70)),
+                child: Text(place.name, style: const TextStyle(fontSize: 16, color: AppColors.textMuted)),
               ),
             const SizedBox(height: 16),
             Row(
@@ -91,7 +92,7 @@ class _Stat extends StatelessWidget {
   Widget build(BuildContext context) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 13, color: Colors.white70)),
+          Text(label, style: const TextStyle(fontSize: 13, color: AppColors.textMuted)),
           Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
         ],
       );
