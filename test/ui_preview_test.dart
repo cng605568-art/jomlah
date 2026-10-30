@@ -113,7 +113,10 @@ Widget _phone(Widget overlay, {List<Offset> route = const [], List<Offset> alt =
 Future<void> _withShadows(WidgetTester tester, Future<void> Function() body) async {
   debugDisableShadows = false;
   try {
-    tester.binding.renderView.markNeedsPaint();
+    // Every layer keeps its old picture until it is painted again, so repaint them all.
+    for (final r in tester.allRenderObjects) {
+      r.markNeedsPaint();
+    }
     await tester.pump();
     await body();
   } finally {
