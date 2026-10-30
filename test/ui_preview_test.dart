@@ -249,10 +249,16 @@ void main() {
               child: Padding(
                 padding: EdgeInsets.fromLTRB(12, 8, 12, 0),
                 child: TurnCard(
-                  icon: Icons.turn_right,
+                  icon: Icons.fork_left,
                   distance: '510 m',
-                  title: "Jalan Dato' Onn",
-                  sign: 'Keluar 205 · ke Putrajaya',
+                  title: 'Lebuhraya Utara-Selatan',
+                  sign: 'Keluar 209 · ke Serdang / Seri Kembangan',
+                  lanes: [
+                    LaneArrow(Icons.turn_slight_left, LaneLook.best),
+                    LaneArrow(Icons.turn_slight_left, LaneLook.ok),
+                    LaneArrow(Icons.straight, LaneLook.off),
+                    LaneArrow(Icons.straight, LaneLook.off),
+                  ],
                 ),
               ),
             ),

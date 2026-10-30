@@ -192,6 +192,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
       ],
       noiseM: 3, // a little jitter, so the GPS cleanup gets exercised too
     );
+    ref.read(reportsProvider.notifier).addPracticeAlerts(plan); // demo mode only
     _simTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       final sim = _sim;
       if (sim == null) return;
@@ -206,6 +207,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
     _simTimer = null;
     if (_sim != null) {
       _sim = null;
+      ref.read(reportsProvider.notifier).clearPracticeAlerts();
       _filter.reset(); // real GPS may be far from where the pretend drive ended
       if (mounted) setState(() {});
     }
@@ -241,6 +243,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
       _accuracyM = filtered.accuracyM;
     });
 
+    ref.read(voiceFeedProvider).onFix(at, speedMps: filtered.speedMps, headingDeg: snap?.bearingDeg ?? heading);
     _stats.add(at, filtered.speedMps);
     _maybeAskAboutJam(at, filtered.speedMps);
     _maybeWarnSpeeding(filtered.speedMps);

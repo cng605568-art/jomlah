@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
+import '../domain/lanes.dart';
 import '../domain/route_plan.dart';
 import '../domain/route_prefs.dart';
 import '../domain/speed_limits.dart';
@@ -104,6 +105,37 @@ class ValhallaClient {
       return parseTraceAttributes(utf8.decode(res.bodyBytes), routeLengthM: plan.totalM);
     } catch (_) {
       return SpeedLimits.empty;
+    }
+  }
+
+  /// Lane arrows before the turns of [plan], where OpenStreetMap has them, keyed by each turn's
+  /// beginIndex. One request per trip (and per reroute). Valhalla's own route format has no lane
+  /// details, but its OSRM format does, so the route's shape is sent back to be traced in that
+  /// format. Never throws: on any problem the trip simply has no lane arrows.
+  Future<Map<int, List<Lane>>> lanes(RoutePlan plan, {required String costing}) async {
+    final encoded = plan.encodedShape;
+    if (encoded == null || encoded.isEmpty) return const {};
+    try {
+      final res = await _http
+          .post(
+            Uri.parse('$_base/trace_route'),
+            headers: {
+              'Content-Type': 'application/json',
+              'User-Agent': 'Jomlah/0.1 (beta)',
+            },
+            body: jsonEncode({
+              'encoded_polyline': encoded,
+              'costing': costing,
+              'shape_match': 'edge_walk', // the shape came from Valhalla: follow the same roads
+              'format': 'osrm',
+              'units': 'kilometers',
+            }),
+          )
+          .timeout(const Duration(seconds: 20));
+      if (res.statusCode != 200) return const {};
+      return parseLanes(utf8.decode(res.bodyBytes), plan);
+    } catch (_) {
+      return const {};
     }
   }
 }

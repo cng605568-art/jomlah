@@ -26,24 +26,33 @@ const kMamakBoss = VoicePack(
     Cue.keepLeft: [
       'Boss, {d} lagi, ambil kiri. Relaks je.',
       'Boss, {d} lagi, ambil kiri ke arah {toward}.',
+      'Boss, {d} lagi, ambil kiri masuk {exit}.',
+      'Boss, {d} lagi, ambil kiri masuk {exit}, ke arah {toward}.',
     ],
     Cue.keepRight: [
       'Boss, {d} lagi, ambil kanan. Relaks je.',
       'Boss, {d} lagi, ambil kanan ke arah {toward}.',
+      'Boss, {d} lagi, ambil kanan masuk {exit}.',
+      'Boss, {d} lagi, ambil kanan masuk {exit}, ke arah {toward}.',
     ],
     Cue.exitLeft: [
       '{d} lagi, keluar kiri Boss. Jangan tersasar, nanti pusing jauh.',
       '{d} lagi, keluar kiri ke arah {toward}, Boss.',
+      'Boss, {d} lagi, keluar kiri di {exit}.',
+      'Boss, {d} lagi, keluar kiri di {exit}, ke arah {toward}.',
     ],
     Cue.exitRight: [
       '{d} lagi, keluar kanan Boss. Jangan tersasar, nanti pusing jauh.',
       '{d} lagi, keluar kanan ke arah {toward}, Boss.',
+      'Boss, {d} lagi, keluar kanan di {exit}.',
+      'Boss, {d} lagi, keluar kanan di {exit}, ke arah {toward}.',
     ],
     Cue.uTurn: [
       'Boss, {d} lagi, U-turn. Pusing balik, takpe, bukan salah Boss.',
     ],
     Cue.roundabout: [
       'Boss, bulatan dalam {d}. Ikut papan tanda, jangan pusing sampai pening.',
+      'Boss, bulatan dalam {d}. Ambil jalan keluar yang {nth} ya.',
     ],
     Cue.merge: [
       'Boss, {d} lagi, masuk lorong. Bagi can kat orang.',
@@ -87,6 +96,19 @@ const kMamakBoss = VoicePack(
     Cue.exitLeft: ['Keluar kiri sekarang!'],
     Cue.exitRight: ['Keluar kanan sekarang!'],
   },
+  then: 'Lepas tu terus {next}.',
+  short: {
+    Cue.turnLeft: 'belok kiri',
+    Cue.turnRight: 'belok kanan',
+    Cue.keepLeft: 'ambil kiri',
+    Cue.keepRight: 'ambil kanan',
+    Cue.exitLeft: 'keluar kiri',
+    Cue.exitRight: 'keluar kanan',
+    Cue.uTurn: 'buat U-turn',
+    Cue.roundabout: 'masuk bulatan',
+    Cue.merge: 'masuk lorong',
+  },
+  ordinals: ['pertama', 'kedua', 'ketiga', 'keempat', 'kelima', 'keenam'],
 );
 
 /// Dry, tired, secretly caring.
@@ -112,24 +134,33 @@ const kKlite = VoicePack(
     Cue.keepLeft: [
       'Keep left in {d}. Lanes exist for a reason. Allegedly.',
       'Keep left in {d} for {toward}. The sign is big and green for a reason.',
+      'Keep left in {d} for {exit}. The sign is big and green for a reason.',
+      'Keep left in {d} for {exit}, towards {toward}. The sign is big and green for a reason.',
     ],
     Cue.keepRight: [
       'Keep right in {d}. Lanes exist for a reason. Allegedly.',
       'Keep right in {d} for {toward}. The sign is big and green for a reason.',
+      'Keep right in {d} for {exit}. The sign is big and green for a reason.',
+      'Keep right in {d} for {exit}, towards {toward}. The sign is big and green for a reason.',
     ],
     Cue.exitLeft: [
       'Exit on the left in {d}. No, not the next one. This one.',
       'Exit on the left in {d} towards {toward}. No, not the next one. This one.',
+      'Exit on the left in {d}: {exit}. No, not the next one. This one.',
+      'Exit on the left in {d}: {exit}, towards {toward}. No, not the next one. This one.',
     ],
     Cue.exitRight: [
       'Exit on the right in {d}. No, not the next one. This one.',
       'Exit on the right in {d} towards {toward}. No, not the next one. This one.',
+      'Exit on the right in {d}: {exit}. No, not the next one. This one.',
+      'Exit on the right in {d}: {exit}, towards {toward}. No, not the next one. This one.',
     ],
     Cue.uTurn: [
       'U-turn in {d}. We all make mistakes. Some of us make them more often.',
     ],
     Cue.roundabout: [
       'Roundabout in {d}. Pick a lane, any lane. Actually, not any lane.',
+      'Roundabout in {d}. Take the {nth} exit. Counting is easy, I promise.',
     ],
     Cue.merge: [
       'Merge in {d}. Take turns. It is a concept.',
@@ -173,6 +204,9 @@ const kKlite = VoicePack(
     Cue.exitLeft: ['Exit left. Now.'],
     Cue.exitRight: ['Exit right. Now.'],
   },
+  then: 'Then {next}. Keep up.',
+  short: _englishShort,
+  ordinals: _englishOrdinals,
 );
 
 /// Plain and clear. The safe choice, and what to use when you really need to concentrate.
@@ -193,12 +227,32 @@ const kSerious = VoicePack(
       'In {d}, turn right.',
       'In {d}, turn right onto {street}.',
     ],
-    Cue.keepLeft: ['In {d}, keep left.', 'In {d}, keep left towards {toward}.'],
-    Cue.keepRight: ['In {d}, keep right.', 'In {d}, keep right towards {toward}.'],
-    Cue.exitLeft: ['In {d}, take the exit on the left.', 'In {d}, take the exit on the left towards {toward}.'],
-    Cue.exitRight: ['In {d}, take the exit on the right.', 'In {d}, take the exit on the right towards {toward}.'],
+    Cue.keepLeft: [
+      'In {d}, keep left.',
+      'In {d}, keep left towards {toward}.',
+      'In {d}, keep left for {exit}.',
+      'In {d}, keep left for {exit}, towards {toward}.',
+    ],
+    Cue.keepRight: [
+      'In {d}, keep right.',
+      'In {d}, keep right towards {toward}.',
+      'In {d}, keep right for {exit}.',
+      'In {d}, keep right for {exit}, towards {toward}.',
+    ],
+    Cue.exitLeft: [
+      'In {d}, take the exit on the left.',
+      'In {d}, take the exit on the left towards {toward}.',
+      'In {d}, take {exit} on the left.',
+      'In {d}, take {exit} on the left, towards {toward}.',
+    ],
+    Cue.exitRight: [
+      'In {d}, take the exit on the right.',
+      'In {d}, take the exit on the right towards {toward}.',
+      'In {d}, take {exit} on the right.',
+      'In {d}, take {exit} on the right, towards {toward}.',
+    ],
     Cue.uTurn: ['In {d}, make a U-turn.'],
-    Cue.roundabout: ['In {d}, enter the roundabout.'],
+    Cue.roundabout: ['In {d}, enter the roundabout.', 'In {d}, at the roundabout, take the {nth} exit.'],
     Cue.merge: ['In {d}, merge.'],
     Cue.arrive: ['You have arrived.'],
     Cue.recalculating: ['Recalculating route.'],
@@ -217,6 +271,23 @@ const kSerious = VoicePack(
     Cue.exitLeft: ['Take the exit now.'],
     Cue.exitRight: ['Take the exit now.'],
   },
+  then: 'Then {next}.',
+  short: _englishShort,
+  ordinals: _englishOrdinals,
 );
+
+const _englishShort = {
+  Cue.turnLeft: 'turn left',
+  Cue.turnRight: 'turn right',
+  Cue.keepLeft: 'keep left',
+  Cue.keepRight: 'keep right',
+  Cue.exitLeft: 'exit left',
+  Cue.exitRight: 'exit right',
+  Cue.uTurn: 'make a U-turn',
+  Cue.roundabout: 'take the roundabout',
+  Cue.merge: 'merge',
+};
+
+const _englishOrdinals = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth'];
 
 const kVoicePacks = <VoicePack>[kMamakBoss, kKlite, kSerious];

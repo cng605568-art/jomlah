@@ -1,5 +1,6 @@
 import 'dart:math';
 import '../../routing/application/routing_providers.dart';
+import '../../routing/domain/route_plan.dart';
 import '../data/speaker.dart';
 import '../domain/voice_pack.dart';
 import '../domain/voice_settings.dart';
@@ -68,23 +69,29 @@ class VoiceEngine {
     final nowKey = '${m.beginIndex}:now';
     final advDone = _announced.contains(advKey);
     final nowDone = _announced.contains(nowKey);
+    final pack = settings().pack;
     final street = m.streetNames.isEmpty ? '' : m.streetNames.first;
-    final toward = m.sign?.towardText ?? '';
+    final toward = spokenToward(m.sign);
+    final exit = spokenExit(m.sign);
+    final nth = spokenOrdinal(m.roundaboutExit, pack);
+    final then = thenPhrase(next.plan!, m, pack, speedMps: _speedMps);
 
     if (d <= nowAt) {
       if (nowDone) return;
-      final hasNow = settings().pack.now[cue]?.isNotEmpty ?? false;
+      final hasNow = pack.now[cue]?.isNotEmpty ?? false;
       if (hasNow) {
-        if (_say(cue, now: true, priority: 2)) _announced.addAll([advKey, nowKey]);
+        if (_say(cue, now: true, then: then, priority: 2)) _announced.addAll([advKey, nowKey]);
       } else if (!advDone) {
-        if (_say(cue, distM: d, street: street, toward: toward, priority: 2)) {
+        if (_say(cue, distM: d, street: street, toward: toward, exit: exit, nth: nth, then: then, priority: 2)) {
           _announced.addAll([advKey, nowKey]);
         }
       } else {
         _announced.add(nowKey);
       }
     } else if (d <= advanceAt && !advDone) {
-      if (_say(cue, distM: d, street: street, toward: toward, priority: 2)) _announced.add(advKey);
+      if (_say(cue, distM: d, street: street, toward: toward, exit: exit, nth: nth, then: then, priority: 2)) {
+        _announced.add(advKey);
+      }
     }
   }
 
@@ -107,7 +114,10 @@ class VoiceEngine {
     double distM = 0,
     String street = '',
     String toward = '',
+    String exit = '',
+    String nth = '',
     String limit = '',
+    String then = '',
     required int priority,
   }) {
     final s = settings();
@@ -118,6 +128,8 @@ class VoiceEngine {
       distance: spokenDistance(distM, pack),
       street: street,
       toward: toward,
+      exit: exit,
+      nth: nth,
       limit: limit,
       rng: _rng,
       avoidIndex: _lastIndex[cue] ?? -1,
@@ -127,7 +139,7 @@ class VoiceEngine {
 
     _lastIndex[cue] = picked.index;
     _currentPriority = priority;
-    _speak(pack, picked.text);
+    _speak(pack, then.isEmpty ? picked.text : '${picked.text} $then');
     return true;
   }
 
@@ -138,4 +150,22 @@ class VoiceEngine {
     }
     await speaker.speak(text);
   }
+}
+
+/// "Lepas tu terus ambil kiri." when the turn after [m] comes right after it: within about 12
+/// seconds at the current speed, and never less than 200 m. Empty otherwise, or when that next
+/// turn is something the voice does not announce (straight on, arrival).
+String thenPhrase(RoutePlan plan, Maneuver m, VoicePack pack, {double speedMps = 0}) {
+  if (pack.then.isEmpty) return '';
+  final i = plan.maneuvers.indexOf(m);
+  if (i < 0 || i + 1 >= plan.maneuvers.length) return '';
+  final after = plan.maneuvers[i + 1];
+  final cue = cueForManeuver(after.type);
+  final phrase = cue == null ? null : pack.short[cue];
+  if (phrase == null) return '';
+  final cum = plan.cumulativeM;
+  if (cum.isEmpty) return '';
+  final gap = cum[min(after.beginIndex, cum.length - 1)] - cum[min(m.beginIndex, cum.length - 1)];
+  if (gap > max(200.0, speedMps * 12)) return '';
+  return pack.then.replaceAll('{next}', phrase);
 }

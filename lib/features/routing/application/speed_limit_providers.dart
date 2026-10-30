@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../domain/lanes.dart';
 import '../domain/route_plan.dart';
 import '../domain/speed_limits.dart';
 import 'route_prefs_provider.dart';
@@ -24,4 +25,24 @@ final currentSpeedLimitProvider = Provider<int?>((ref) {
   final plan = nav.plan;
   if (!nav.navigating || plan == null) return null;
   return zones.limitAt(plan.totalM - nav.remainingM);
+});
+
+/// Lane arrows for the route being driven, keyed by each turn's beginIndex. Fetched like the speed
+/// limits: once after Jom! and again after each reroute.
+final routeLanesProvider = FutureProvider<Map<int, List<Lane>>>((ref) async {
+  final RoutePlan? plan = ref.watch(routingProvider.select((s) => s.navigating ? s.plan : null));
+  if (plan == null) return const {};
+  final costing = ref.read(routePrefsProvider).vehicle.costing;
+  return ref.read(valhallaClientProvider).lanes(plan, costing: costing);
+});
+
+/// The lanes before the next turn, or null when there is nothing useful to show.
+/// Shown from 2 km out, like the green signs on the highway.
+final nextTurnLanesProvider = Provider<List<Lane>?>((ref) {
+  final nav = ref.watch(routingProvider);
+  final next = nav.next;
+  if (!nav.navigating || next == null || nav.distanceToNextM > 2000) return null;
+  final lanes = ref.watch(routeLanesProvider);
+  if (lanes.isLoading) return null; // a new route: the old turn numbers no longer line up
+  return lanes.valueOrNull?[next.beginIndex];
 });

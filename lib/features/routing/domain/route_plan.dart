@@ -47,6 +47,7 @@ class Maneuver {
     required this.endIndex,
     required this.streetNames,
     this.sign,
+    this.roundaboutExit,
   });
 
   /// Valhalla maneuver type: 10 right, 15 left, 4-6 destination, 26 roundabout...
@@ -58,6 +59,7 @@ class Maneuver {
   final int endIndex;
   final List<String> streetNames;
   final ExitSign? sign; // highway sign info, when the map has it
+  final int? roundaboutExit; // at a roundabout: take this exit (1 = first)
 
   factory Maneuver.fromJson(Map<String, dynamic> j) => Maneuver(
         type: j['type'] as int,
@@ -69,6 +71,7 @@ class Maneuver {
         sign: j['sign'] is Map<String, dynamic>
             ? ExitSign.fromJson(j['sign'] as Map<String, dynamic>)
             : null,
+        roundaboutExit: j['roundabout_exit_count'] is int ? j['roundabout_exit_count'] as int : null,
       );
 }
 
@@ -105,6 +108,35 @@ class RoutePlan {
     }
     return out;
   }
+}
+
+/// The point [alongM] metres from the start of [plan] (clamped to the route).
+LatLng pointAlong(RoutePlan plan, double alongM) {
+  final cum = plan.cumulativeM;
+  final s = plan.shape;
+  if (s.isEmpty) return LatLng(0, 0);
+  if (alongM <= 0 || s.length == 1) return s.first;
+  if (alongM >= plan.totalM) return s.last;
+  var i = 1;
+  while (i < cum.length - 1 && cum[i] < alongM) {
+    i++;
+  }
+  final seg = cum[i] - cum[i - 1];
+  final t = seg <= 0 ? 0.0 : (alongM - cum[i - 1]) / seg;
+  return LatLng(
+    s[i - 1].latitude + t * (s[i].latitude - s[i - 1].latitude),
+    s[i - 1].longitude + t * (s[i].longitude - s[i - 1].longitude),
+  );
+}
+
+/// Where Simulasi puts its practice alerts: a speed camera a third of the way and police two
+/// thirds of the way, as long as the route is long enough to hear them (1.5 km or more).
+List<(String kind, LatLng at)> practiceAlertSpots(RoutePlan plan) {
+  if (plan.totalM < 1500) return const [];
+  return [
+    ('camera', pointAlong(plan, plan.totalM / 3)),
+    ('police', pointAlong(plan, plan.totalM * 2 / 3)),
+  ];
 }
 
 /// The part of the route still ahead of the car, starting at [from] (the car) when given.

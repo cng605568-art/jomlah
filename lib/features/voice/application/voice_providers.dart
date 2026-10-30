@@ -54,41 +54,56 @@ const _alertCues = <ReportType, Cue>{
   ReportType.crash: Cue.crash,
 };
 
-/// Wires the engine to navigation + GPS. Watch this provider once (MapScreen does)
-/// and it keeps listening for as long as the app is open.
+/// Wires the engine to navigation. Watch this provider once (MapScreen does) and it keeps
+/// listening for as long as the app is open. Positions come in through [voiceFeedProvider].
 final voiceEngineProvider = Provider<VoiceEngine>((ref) {
   final engine = VoiceEngine(
     speaker: ref.watch(speakerProvider),
     settings: () => ref.read(voiceSettingsProvider),
   );
-
   ref.listen<NavState>(routingProvider, (prev, next) => engine.onNav(prev, next));
-
-  ref.listen(locationProvider, (_, next) {
-    next.whenData((pos) {
-      engine.onSpeed(pos.speed < 0 ? 0 : pos.speed);
-
-      // Road alerts: only while navigating and moving (>7 km/h), within 500 m,
-      // roughly in front of us, and near our route (not on a parallel road).
-      final nav = ref.read(routingProvider);
-      if (!nav.navigating || pos.speed < 2) return;
-      final here = LatLng(pos.latitude, pos.longitude);
-      for (final r in ref.read(reportsProvider).reports) {
-        final cue = _alertCues[r.type];
-        if (cue == null || r.isExpired) continue;
-        final d = haversineM(here, r.position);
-        if (d > 500 || d < 20) continue;
-        if (pos.heading >= 0) {
-          var diff = (bearingDeg(here, r.position) - pos.heading) % 360;
-          if (diff > 180) diff -= 360;
-          if (diff.abs() > 60) continue;
-        }
-        final off = ref.read(routingProvider.notifier).distanceFromRoute(r.position);
-        if (off == null || off > 60) continue;
-        engine.alert(r.id, cue, math.max(d, 50));
-      }
-    });
-  });
-
   return engine;
 });
+
+/// Hands each cleaned-up position to the voice: the speed (faster means earlier turn warnings)
+/// and road alerts ahead. MapScreen calls it for real GPS and Simulasi alike, so alerts are
+/// spoken during a pretend drive too.
+final voiceFeedProvider = Provider<VoiceFeed>((ref) => VoiceFeed(ref, ref.watch(voiceEngineProvider)));
+
+class VoiceFeed {
+  VoiceFeed(this._ref, this._engine);
+  final Ref _ref;
+  final VoiceEngine _engine;
+
+  void onFix(LatLng here, {required double speedMps, double? headingDeg}) {
+    _engine.onSpeed(speedMps < 0 ? 0 : speedMps);
+
+    // Road alerts: only while navigating and moving (>7 km/h), within 500 m,
+    // roughly in front of us, and near our route (not on a parallel road).
+    final nav = _ref.read(routingProvider);
+    if (!nav.navigating || speedMps < 2) return;
+    final routing = _ref.read(routingProvider.notifier);
+    for (final r in _ref.read(reportsProvider).reports) {
+      final cue = _alertCues[r.type];
+      if (cue == null || r.isExpired) continue;
+      final d = alertAheadM(here, headingDeg, r.position);
+      if (d == null) continue;
+      final off = routing.distanceFromRoute(r.position);
+      if (off == null || off > 60) continue;
+      _engine.alert(r.id, cue, math.max(d, 50));
+    }
+  }
+}
+
+/// Metres to an alert at [at] when it is worth announcing from [here]: 20 to 500 m away and,
+/// when the heading is known, within 60 degrees of straight ahead. Null otherwise.
+double? alertAheadM(LatLng here, double? headingDeg, LatLng at) {
+  final d = haversineM(here, at);
+  if (d > 500 || d < 20) return null;
+  if (headingDeg != null && headingDeg >= 0) {
+    var diff = (bearingDeg(here, at) - headingDeg) % 360;
+    if (diff > 180) diff -= 360;
+    if (diff.abs() > 60) return null;
+  }
+  return d;
+}

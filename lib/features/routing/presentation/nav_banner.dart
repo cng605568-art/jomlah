@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../../../core/prefs.dart';
 import '../application/routing_providers.dart';
+import '../application/speed_limit_providers.dart';
+import '../domain/lanes.dart';
 import '../domain/route_plan.dart';
 import '../../map/presentation/overlays.dart';
 
@@ -45,6 +48,41 @@ IconData maneuverIcon(int type) {
       return Icons.straight;
   }
 }
+
+/// A painted lane arrow (OSRM word) -> icon. Malaysia drives on the left, so U-turns go right.
+IconData laneIcon(String arrow) {
+  switch (arrow) {
+    case 'left':
+      return Icons.turn_left;
+    case 'slight left':
+      return Icons.turn_slight_left;
+    case 'sharp left':
+      return Icons.turn_sharp_left;
+    case 'right':
+      return Icons.turn_right;
+    case 'slight right':
+      return Icons.turn_slight_right;
+    case 'sharp right':
+      return Icons.turn_sharp_right;
+    case 'uturn':
+      return Icons.u_turn_right;
+    default: // "straight", or "none" (no arrow painted: usually straight on)
+      return Icons.straight;
+  }
+}
+
+/// Lanes as the turn card draws them.
+List<LaneArrow> laneArrows(List<Lane> lanes) => [
+      for (final l in lanes)
+        LaneArrow(
+          laneIcon(l.shown),
+          switch (l.use) {
+            LaneUse.best => LaneLook.best,
+            LaneUse.ok => LaneLook.ok,
+            LaneUse.no => LaneLook.off,
+          },
+        ),
+    ];
 
 String formatDistance(double m) =>
     m < 1000 ? '${(m / 10).round() * 10} m' : '${(m / 1000).toStringAsFixed(1)} km';
@@ -102,15 +140,20 @@ class NavTopArea extends ConsumerWidget {
     final next = nav.next;
     if (next == null) return const SizedBox.shrink();
     final street = next.streetNames.isEmpty ? next.instruction : next.streetNames.first;
+    final lanes = ref.watch(nextTurnLanesProvider);
     return TurnCard(
       icon: maneuverIcon(next.type),
       distance: formatDistance(nav.distanceToNextM),
       title: street,
       sign: signText(next.sign),
       status: nav.rerouting ? 'Mengira semula…' : null,
+      lanes: lanes == null || nav.rerouting ? null : laneArrows(lanes),
     );
   }
 }
+
+/// Where the last Simulasi speed is remembered, so the menu highlights it next time.
+const kSimSpeedKey = 'sim.kmh';
 
 /// Bottom of the screen once a destination is picked: route choices before "Jom!", the trip bar
 /// while driving, nothing otherwise.
@@ -155,7 +198,11 @@ class NavBottomArea extends ConsumerWidget {
             ? null
             : PopupMenuButton<double>(
                 tooltip: 'Simulasi pemanduan',
-                onSelected: onSimulate,
+                initialValue: ref.read(sharedPrefsProvider).getDouble(kSimSpeedKey), // last speed used
+                onSelected: (kmh) {
+                  ref.read(sharedPrefsProvider).setDouble(kSimSpeedKey, kmh);
+                  onSimulate!(kmh);
+                },
                 itemBuilder: (_) => const [
                   PopupMenuItem(value: 30.0, child: Text('30 km/j (bandar)')),
                   PopupMenuItem(value: 60.0, child: Text('60 km/j')),

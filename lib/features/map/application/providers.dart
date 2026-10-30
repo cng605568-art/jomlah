@@ -7,6 +7,7 @@ import '../../../core/app_info.dart';
 import '../../../core/device_id.dart';
 import '../../../core/prefs.dart';
 import '../../routing/application/routing_providers.dart';
+import '../../routing/domain/route_plan.dart';
 import '../data/http_report_repository.dart';
 import '../data/report_repository.dart';
 import '../domain/report.dart';
@@ -156,6 +157,48 @@ class ReportsNotifier extends Notifier<ReportsState> {
   }
 
   void clearToast() => state = state.copyWith(reports: state.reports);
+
+  /// Simulasi in demo mode: a speed camera and a police alert along the pretend route, so the alert
+  /// voices can be heard without a car. Kept in this phone's memory only and never sent to a real
+  /// server: with a server (API_URL set) this does nothing.
+  void addPracticeAlerts(RoutePlan plan) {
+    final repo = ref.read(reportRepositoryProvider);
+    if (repo is! MockReportRepository) return;
+    final now = DateTime.now();
+    final practice = [
+      for (final (kind, at) in practiceAlertSpots(plan))
+        Report(
+          id: '$kPracticeIdPrefix$kind',
+          type: kind == 'camera' ? ReportType.camera : ReportType.police,
+          position: at,
+          createdAt: now,
+        ),
+    ];
+    repo.addPractice(practice);
+    state = ReportsState(
+      reports: [
+        for (final r in state.reports)
+          if (!r.id.startsWith(kPracticeIdPrefix)) r,
+        ...practice,
+      ],
+      submitting: state.submitting,
+      toast: state.toast,
+    );
+  }
+
+  void clearPracticeAlerts() {
+    final repo = ref.read(reportRepositoryProvider);
+    if (repo is! MockReportRepository) return;
+    repo.removePractice();
+    state = ReportsState(
+      reports: [
+        for (final r in state.reports)
+          if (!r.id.startsWith(kPracticeIdPrefix)) r,
+      ],
+      submitting: state.submitting,
+      toast: state.toast,
+    );
+  }
 }
 
 final reportsProvider =

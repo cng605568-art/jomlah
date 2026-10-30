@@ -1,5 +1,10 @@
 import 'dart:math';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:jomlah/core/geo.dart';
+import 'package:jomlah/features/routing/domain/route_plan.dart';
+import 'package:jomlah/features/voice/application/voice_engine.dart';
+import 'package:jomlah/features/voice/application/voice_providers.dart';
 import 'package:jomlah/features/voice/domain/voice_pack.dart';
 import 'package:jomlah/features/voice/domain/voice_packs.dart';
 
@@ -34,11 +39,92 @@ void main() {
       expect(p.text, 'In 300 metres, exit.');
     }
 
-    // Knows the destination: both lines are options, and the placeholder is filled in.
-    final first = pickLine(lines, distance: '300 metres', street: '', toward: 'Putrajaya', rng: _Pick(0))!;
-    final second = pickLine(lines, distance: '300 metres', street: '', toward: 'Putrajaya', rng: _Pick(1))!;
-    expect(first.text, 'In 300 metres, exit.');
-    expect(second.text, 'In 300 metres, exit towards Putrajaya.');
+    // Knows the destination: the line that says it wins, whatever the dice say.
+    for (var n = 0; n < 5; n++) {
+      final p = pickLine(lines, distance: '300 metres', street: '', toward: 'Putrajaya', rng: _Pick(n))!;
+      expect(p.text, 'In 300 metres, exit towards Putrajaya.');
+    }
+  });
+
+  test('pickLine says as much about an exit as it knows', () {
+    final lines = ['Exit.', 'Exit to {toward}.', 'Take {exit}.', 'Take {exit} to {toward}.'];
+    String say({String toward = '', String exit = ''}) =>
+        pickLine(lines, distance: '', street: '', toward: toward, exit: exit, rng: _Pick(1))!.text;
+    expect(say(), 'Exit.');
+    expect(say(toward: 'Klang'), 'Exit to Klang.');
+    expect(say(exit: 'exit 2 0 9'), 'Take exit 2 0 9.');
+    expect(say(exit: 'exit 2 0 9', toward: 'Klang'), 'Take exit 2 0 9 to Klang.');
+  });
+
+  test('exit numbers are read one character at a time, with the interchange name', () {
+    expect(spokenExit(const ExitSign(number: ['209'], name: ['UPM'])), 'exit 2 0 9, UPM');
+    expect(spokenExit(const ExitSign(number: ['3306C'])), 'exit 3 3 0 6 C');
+    expect(spokenExit(const ExitSign(name: ['Salak'])), 'exit Salak');
+    expect(spokenExit(const ExitSign(toward: ['Klang'])), '');
+    expect(spokenExit(null), '');
+  });
+
+  test('destinations are spoken with commas, without route codes when there are names', () {
+    expect(spokenToward(const ExitSign(toward: ['E26', 'Kajang', 'Putrajaya', 'Banting'])), 'Kajang, Putrajaya');
+    expect(spokenToward(const ExitSign(toward: ['Seremban'])), 'Seremban');
+    expect(spokenToward(const ExitSign(toward: ['E7', '1'])), 'E7'); // only codes: say the first
+    expect(spokenToward(const ExitSign(number: ['5'])), '');
+    expect(spokenToward(const ExitSign(toward: ['Pandan-Tebrau'])).contains('/'), isFalse);
+  });
+
+  test('roundabout exits are counted in each voice', () {
+    for (final pack in kVoicePacks) {
+      final nth = spokenOrdinal(2, pack);
+      expect(nth, isNotEmpty, reason: pack.id);
+      final p = pickLine(pack.advance[Cue.roundabout], distance: '200', street: '', nth: nth, rng: _Pick(0))!;
+      expect(p.text, contains(nth), reason: pack.id);
+      expect(p.text.contains('{'), isFalse, reason: pack.id);
+    }
+    expect(spokenOrdinal(0, kSerious), '');
+    expect(spokenOrdinal(99, kSerious), '');
+    expect(spokenOrdinal(null, kSerious), '');
+  });
+
+  test('every voice names the exit and where it goes, when the sign says', () {
+    for (final pack in kVoicePacks) {
+      for (final cue in [Cue.exitLeft, Cue.exitRight, Cue.keepLeft, Cue.keepRight]) {
+        final p = pickLine(pack.advance[cue], distance: '500', street: '', exit: 'exit 2 0 9, UPM', toward: 'Serdang', rng: _Pick(0))!;
+        expect(p.text, contains('exit 2 0 9, UPM'), reason: '${pack.id} ${cue.name}');
+        expect(p.text, contains('Serdang'), reason: '${pack.id} ${cue.name}');
+        expect(p.text.contains('{'), isFalse, reason: '${pack.id} ${cue.name}');
+      }
+    }
+  });
+
+  test('a turn right after another is announced together with it', () {
+    // Three turns: a fork, a keep-left 150 m later, then a right turn 1 km after that, then arrival.
+    final start = LatLng(3.1000, 101.7000);
+    final shape = [start, for (final n in [400.0, 550.0, 1550.0, 1600.0]) offsetM(start, 0, n)];
+    Maneuver turn(int type, int begin) =>
+        Maneuver(type: type, instruction: '', lengthKm: 0, beginIndex: begin, endIndex: begin, streetNames: const []);
+    final plan = RoutePlan(
+      shape: shape,
+      maneuvers: [turn(1, 0), turn(21, 1), turn(24, 2), turn(10, 3), turn(4, 4)],
+      distanceKm: 1.6,
+      durationSec: 200,
+    );
+    final m = plan.maneuvers;
+    expect(thenPhrase(plan, m[1], kMamakBoss), 'Lepas tu terus ambil kiri.');
+    expect(thenPhrase(plan, m[1], kSerious), 'Then keep left.');
+    expect(thenPhrase(plan, m[2], kSerious), ''); // the right turn is 1 km on
+    expect(thenPhrase(plan, m[2], kSerious, speedMps: 100), 'Then turn right.'); // very fast: it comes soon
+    expect(thenPhrase(plan, m[3], kSerious), ''); // arriving is not a turn
+    expect(thenPhrase(plan, m[4], kSerious), ''); // nothing after the last one
+  });
+
+  test('road alerts are announced only when ahead and in range', () {
+    final here = LatLng(3.1000, 101.7000);
+    final ahead = offsetM(here, 0, 300);
+    expect(alertAheadM(here, 0, ahead), closeTo(300, 2));
+    expect(alertAheadM(here, 180, ahead), isNull); // behind us
+    expect(alertAheadM(here, null, ahead), closeTo(300, 2)); // heading unknown: distance only
+    expect(alertAheadM(here, 0, offsetM(here, 0, 700)), isNull); // too far
+    expect(alertAheadM(here, 0, offsetM(here, 0, 10)), isNull); // already on it
   });
 
   test('pickLine avoids repeating the previous line', () {

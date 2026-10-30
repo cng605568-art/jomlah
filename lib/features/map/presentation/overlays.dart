@@ -285,6 +285,7 @@ class TurnCard extends StatelessWidget {
     required this.title,
     this.sign,
     this.status,
+    this.lanes,
   });
 
   final IconData icon;
@@ -292,6 +293,7 @@ class TurnCard extends StatelessWidget {
   final String title;
   final String? sign; // "Keluar 205 · ke Putrajaya", shown like the green highway signs
   final String? status; // e.g. "Mengira semula…"
+  final List<LaneArrow>? lanes; // the lanes before the turn, left to right
 
   @override
   Widget build(BuildContext context) => Container(
@@ -305,7 +307,17 @@ class TurnCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(28),
           boxShadow: const [BoxShadow(color: Color(0x731E40AF), blurRadius: 30, offset: Offset(0, 12))],
         ),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _turnRow(),
+            if (lanes != null && lanes!.length > 1)
+              Padding(padding: const EdgeInsets.only(top: 12), child: LaneRow(lanes: lanes!)),
+          ],
+        ),
+      );
+
+  Widget _turnRow() => Row(
           children: [
             Container(
               width: 72,
@@ -358,6 +370,71 @@ class TurnCard extends StatelessWidget {
               ),
             ),
           ],
+        );
+}
+
+/// How one lane looks in the lane row.
+enum LaneLook {
+  best, // the lane to be in: bright, on a light tile
+  ok, // also fine: bright arrow
+  off, // goes elsewhere: faded
+}
+
+/// One lane before a turn: its painted arrow and whether to use it.
+class LaneArrow {
+  const LaneArrow(this.icon, this.look);
+  final IconData icon;
+  final LaneLook look;
+}
+
+/// The lanes before a turn, left to right, like the arrows painted on the road.
+class LaneRow extends StatelessWidget {
+  const LaneRow({super.key, required this.lanes});
+  final List<LaneArrow> lanes;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+        decoration: BoxDecoration(
+          color: const Color(0x330B1430),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var i = 0; i < lanes.length; i++) ...[
+                if (i > 0)
+                  Container(width: 2, height: 26, margin: const EdgeInsets.symmetric(horizontal: 3), color: const Color(0x40FFFFFF)),
+                _LaneTile(lane: lanes[i]),
+              ],
+            ],
+          ),
+        ),
+      );
+}
+
+class _LaneTile extends StatelessWidget {
+  const _LaneTile({required this.lane});
+  final LaneArrow lane;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 42,
+        height: 40,
+        decoration: BoxDecoration(
+          color: lane.look == LaneLook.best ? const Color(0x40FFFFFF) : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(
+          lane.icon,
+          size: 28,
+          color: switch (lane.look) {
+            LaneLook.best => Colors.white,
+            LaneLook.ok => const Color(0xD9FFFFFF),
+            LaneLook.off => const Color(0x47FFFFFF),
+          },
         ),
       );
 }
