@@ -5,13 +5,39 @@ import '../domain/report.dart';
 // The pieces that float over the map. They take plain values and callbacks (no providers), so the
 // map screen decides what to show and tests can draw them on their own.
 
+const _glassShadow = [BoxShadow(color: Color(0x47000000), blurRadius: 24, offset: Offset(0, 8))];
+
 /// Dark navy "glass" used by every floating control, so they all look like one family.
-BoxDecoration glassDecoration({double radius = 20}) => BoxDecoration(
+BoxDecoration glassDecoration({double radius = 20, bool shadow = true}) => BoxDecoration(
       color: AppColors.overlay,
       borderRadius: BorderRadius.circular(radius),
       border: Border.all(color: AppColors.outline),
-      boxShadow: const [BoxShadow(color: Color(0x47000000), blurRadius: 24, offset: Offset(0, 8))],
+      boxShadow: shadow ? _glassShadow : null,
     );
+
+/// A rounded button face with a tap ripple. The shadow is drawn outside the Material, because
+/// Ink is clipped to the Material's square box and a shadow drawn there gets cut off at the edges.
+class _TapFace extends StatelessWidget {
+  const _TapFace({required this.face, required this.radius, required this.onTap, required this.child, this.shadows});
+
+  final BoxDecoration face;
+  final double radius;
+  final List<BoxShadow>? shadows;
+  final VoidCallback onTap;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(radius), boxShadow: shadows),
+        child: Material(
+          color: Colors.transparent,
+          child: Ink(
+            decoration: face,
+            child: InkWell(borderRadius: BorderRadius.circular(radius), onTap: onTap, child: child),
+          ),
+        ),
+      );
+}
 
 /// Rounded square button floating over the map: re-centre, settings, back.
 class MapButton extends StatelessWidget {
@@ -33,16 +59,12 @@ class MapButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Tooltip(
         message: tooltip,
-        child: Material(
-          color: Colors.transparent,
-          child: Ink(
-            decoration: glassDecoration(radius: 18),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(18),
-              onTap: onPressed,
-              child: SizedBox(width: size, height: size, child: Icon(icon, color: color)),
-            ),
-          ),
+        child: _TapFace(
+          face: glassDecoration(radius: 18, shadow: false),
+          radius: 18,
+          shadows: _glassShadow,
+          onTap: onPressed,
+          child: SizedBox(width: size, height: size, child: Icon(icon, color: color)),
         ),
       );
 }
@@ -60,29 +82,22 @@ class ReportButton extends StatelessWidget {
   Widget build(BuildContext context) => Semantics(
         button: true,
         label: 'Lapor',
-        child: Material(
-          color: Colors.transparent,
-          child: Ink(
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [AppColors.reportLight, AppColors.report],
-              ),
-              borderRadius: BorderRadius.circular(radius),
-              boxShadow: glow
-                  ? const [BoxShadow(color: Color(0x73F97316), blurRadius: 24, offset: Offset(0, 10))]
-                  : null,
+        child: _TapFace(
+          face: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [AppColors.reportLight, AppColors.report],
             ),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(radius),
-              onTap: onPressed,
-              child: SizedBox(
-                width: size,
-                height: size,
-                child: Icon(Icons.warning_amber_rounded, color: Colors.white, size: size * 0.47),
-              ),
-            ),
+            borderRadius: BorderRadius.circular(radius),
+          ),
+          radius: radius,
+          shadows: glow ? const [BoxShadow(color: Color(0x73F97316), blurRadius: 24, offset: Offset(0, 10))] : null,
+          onTap: onPressed,
+          child: SizedBox(
+            width: size,
+            height: size,
+            child: Icon(Icons.warning_amber_rounded, color: Colors.white, size: size * 0.47),
           ),
         ),
       );
@@ -533,28 +548,23 @@ class _GoButton extends StatelessWidget {
   final VoidCallback onPressed;
 
   @override
-  Widget build(BuildContext context) => Material(
-        color: Colors.transparent,
-        child: Ink(
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(colors: [AppColors.primary, AppColors.primaryDeep]),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: const [BoxShadow(color: Color(0x732563EB), blurRadius: 24, offset: Offset(0, 10))],
-          ),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(20),
-            onTap: onPressed,
-            child: const SizedBox(
-              height: 60,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.navigation_rounded, color: Colors.white),
-                  SizedBox(width: 10),
-                  Text('Jom!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-                ],
-              ),
-            ),
+  Widget build(BuildContext context) => _TapFace(
+        face: BoxDecoration(
+          gradient: const LinearGradient(colors: [AppColors.primary, AppColors.primaryDeep]),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        radius: 20,
+        shadows: const [BoxShadow(color: Color(0x732563EB), blurRadius: 24, offset: Offset(0, 10))],
+        onTap: onPressed,
+        child: const SizedBox(
+          height: 60,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.navigation_rounded, color: Colors.white),
+              SizedBox(width: 10),
+              Text('Jom!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+            ],
           ),
         ),
       );
