@@ -245,3 +245,12 @@ and line. It does not build an APK; `main` still runs the full build, tests incl
 - The route line while driving is redrawn every frame from the gliding car (`CarPose.alongM` and
   `remainingFromDistance`), so it always starts exactly at the car. Before, it was cut only once per
   GPS fix, which left up to a second of line behind the car (about 25 m at 90 km/h).
+
+## Publishing a release
+- Write `release-notes/<tag>.md` (first line `# Title`, then the notes), commit it, then push a tag such
+  as `v1.0.4(BETA)` on that commit. The workflow builds the APK, signs it, and publishes the GitHub
+  Release with the APK, the title and the notes. Tags with "beta" in them become pre-releases.
+- Releases made by hand on GitHub's website still work; without a notes file the workflow only
+  attaches the APK and leaves the typed title and notes alone.
+- Settings in the app shows the version: the tag on release builds, "dev build N" otherwise
+  (N = the run number on the Actions page). Android's version code is the run number.

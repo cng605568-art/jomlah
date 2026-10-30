@@ -6,4 +6,5 @@ const kPrivacyUrl = String.fromEnvironment('PRIVACY_URL');
 /// Without a backend, alerts are fake and live only on this phone.
 const kDemoMode = kApiUrl == '';
 
-const kAppVersion = '0.1.0 beta';
+/// The release tag (e.g. "v1.0.4(BETA)") or "dev build N", filled in by the GitHub workflow.
+const kAppVersion = String.fromEnvironment('APP_VERSION', defaultValue: 'dev');
