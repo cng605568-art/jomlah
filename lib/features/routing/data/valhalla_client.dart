@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import '../domain/route_plan.dart';
 import '../domain/route_prefs.dart';
+import '../domain/speed_limits.dart';
 import 'polyline.dart';
 
 const _envUrl = String.fromEnvironment('VALHALLA_URL');
@@ -73,6 +74,38 @@ class ValhallaClient {
     if (plans.isEmpty) throw RoutingException('Tak jumpa laluan.');
     return plans;
   }
+
+  /// Legal speed limits along [plan], where OpenStreetMap has them. One request per trip
+  /// (and per reroute). Never throws: on any problem the trip simply has no speed-limit sign.
+  Future<SpeedLimits> speedLimits(RoutePlan plan, {required String costing}) async {
+    final encoded = plan.encodedShape;
+    if (encoded == null || encoded.isEmpty) return SpeedLimits.empty;
+    try {
+      final res = await _http
+          .post(
+            Uri.parse('$_base/trace_attributes'),
+            headers: {
+              'Content-Type': 'application/json',
+              'User-Agent': 'Jomlah/0.1 (beta)',
+            },
+            body: jsonEncode({
+              'encoded_polyline': encoded,
+              'costing': costing,
+              // The shape came from Valhalla itself, so it can follow the exact same edges.
+              'shape_match': 'edge_walk',
+              'filters': {
+                'attributes': ['edge.speed_limit', 'edge.length'],
+                'action': 'include',
+              },
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
+      if (res.statusCode != 200) return SpeedLimits.empty;
+      return parseTraceAttributes(utf8.decode(res.bodyBytes), routeLengthM: plan.totalM);
+    } catch (_) {
+      return SpeedLimits.empty;
+    }
+  }
 }
 
 /// Main route first, then any alternates.
@@ -89,8 +122,10 @@ List<RoutePlan> parseValhallaRoutes(String body) {
 RoutePlan _planFromTrip(Map<String, dynamic> trip) {
   final leg = (trip['legs'] as List).first as Map<String, dynamic>;
   final summary = trip['summary'] as Map<String, dynamic>;
+  final encoded = leg['shape'] as String;
   return RoutePlan(
-    shape: decodePolyline(leg['shape'] as String),
+    shape: decodePolyline(encoded),
+    encodedShape: encoded,
     maneuvers: [
       for (final m in leg['maneuvers'] as List)
         Maneuver.fromJson(m as Map<String, dynamic>),

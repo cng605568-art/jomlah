@@ -55,6 +55,26 @@ void main() {
     expect(cueForManeuver(4), isNull);
   });
 
+  test('pickLine fills in {limit}, and skips such lines when there is no limit', () {
+    final lines = ['Slow down.', 'Limit {limit}. Slow down.'];
+    for (var n = 0; n < 4; n++) {
+      expect(pickLine(lines, distance: '', street: '', rng: _Pick(n))!.text, 'Slow down.');
+    }
+    final withLimit = pickLine(lines, distance: '', street: '', limit: '80', rng: _Pick(1))!;
+    expect(withLimit.text, 'Limit 80. Slow down.');
+  });
+
+  test('every pack says the actual limit when warning about speeding', () {
+    for (final pack in kVoicePacks) {
+      final lines = pack.advance[Cue.speeding];
+      for (var n = 0; n < (lines?.length ?? 0); n++) {
+        final p = pickLine(lines, distance: '', street: '', limit: '90', rng: _Pick(n))!;
+        expect(p.text, contains('90'), reason: pack.id);
+        expect(p.text.contains('{'), isFalse, reason: pack.id);
+      }
+    }
+  });
+
   test('every pack can say every cue', () {
     for (final pack in kVoicePacks) {
       for (final cue in Cue.values) {

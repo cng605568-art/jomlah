@@ -29,7 +29,7 @@ We do not run these services, and they have their own policies.
 | What for | Service | What it can see |
 |---|---|---|
 | Map pictures | OpenStreetMap public tile servers | Your IP address and the map area you view |
-| Routes | Public Valhalla demo server run by FOSSGIS | Your start and destination coordinates and your IP address when you plan or re-plan a route |
+| Routes | Public Valhalla demo server run by FOSSGIS | Your start and destination coordinates and your IP address when you plan or re-plan a route. After you press Jom! (and after a re-plan), the line of the chosen route is sent back once to look up its speed limits |
 | Place search | Komoot's public Photon service | The text you type, your approximate location (to rank results) and your IP address |
 | Spoken directions | Your phone's own text-to-speech engine | Depends on your phone. Some engines process text online |
 

@@ -10,7 +10,9 @@ import 'package:latlong2/latlong.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../../core/geo.dart';
 import '../../routing/application/routing_providers.dart';
+import '../../routing/application/speed_limit_providers.dart';
 import '../../routing/domain/route_plan.dart';
+import '../../routing/domain/speed_limits.dart';
 import '../../routing/presentation/nav_banner.dart';
 import '../../search/application/search_providers.dart';
 import '../../search/domain/place.dart';
@@ -73,6 +75,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
 
   final _stats = TripStats(); // arrival summary, on this phone only
   final _jam = JamDetector();
+  final _speedWarner = SpeedWarner(); // "slow down" when clearly over a known limit
   Place? _destPlace; // the place the driver searched for, if they did
   bool _askJam = false; // showing the "Jem?" prompt
   Timer? _jamTimer;
@@ -230,6 +233,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
 
     _stats.add(at, filtered.speedMps);
     _maybeAskAboutJam(at, filtered.speedMps);
+    _maybeWarnSpeeding(filtered.speedMps);
 
     if (!_movedToFirstFix) {
       _movedToFirstFix = true;
@@ -266,6 +270,18 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
     _jamTimer = Timer(const Duration(seconds: 10), () {
       if (mounted) setState(() => _askJam = false);
     });
+  }
+
+  /// Says "slow down" when over a known limit for a few seconds; once per stretch of road.
+  /// Works in Simulasi too, because pretend fixes come through here as well.
+  void _maybeWarnSpeeding(double speedMps) {
+    final limit = ref.read(currentSpeedLimitProvider);
+    final warn = _speedWarner.update(
+      limitKph: limit,
+      speedKph: speedMps * 3.6,
+      now: DateTime.now(),
+    );
+    if (warn && limit != null) ref.read(voiceEngineProvider).speeding(limit);
   }
 
   void _reportJam() {
@@ -323,6 +339,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
       if (!active) {
         _resetRotation(); // trip over: back to north-up
         _stopSimulation();
+        _speedWarner.reset();
       }
     });
 
@@ -370,6 +387,9 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
     final turned = ref.watch(mapOrientationProvider) == MapOrientation.headingUp &&
         nav.navigating &&
         _follow;
+
+    final limit = ref.watch(currentSpeedLimitProvider); // null where the map does not know it
+    final kmh = _speedMps * 3.6;
 
     final nightMode = ref.watch(nightModeProvider);
     final night = nightMode == NightMode.always ||
@@ -521,7 +541,13 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
             ),
           const Positioned(left: 16, bottom: 140, child: SettingsButton()),
           if (here != null)
-            Positioned(left: 16, bottom: 196, child: _SpeedBubble(kmh: _speedMps * 3.6)),
+            Positioned(
+              left: 16,
+              bottom: 196,
+              child: _SpeedBubble(kmh: kmh, over: _speedWarner.isOver(limit, kmh)),
+            ),
+          if (limit != null)
+            Positioned(left: 84, bottom: 196, child: _SpeedLimitSign(kph: limit)),
           if (_sim != null)
             const Positioned(left: 16, bottom: 262, child: _SimPill()),
           if (!_follow && here != null)
@@ -547,9 +573,12 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
   }
 }
 
+const _signRed = Color(0xFFD7182A);
+
 class _SpeedBubble extends StatelessWidget {
-  const _SpeedBubble({required this.kmh});
+  const _SpeedBubble({required this.kmh, this.over = false});
   final double kmh;
+  final bool over; // over the speed limit: turn red
 
   @override
   Widget build(BuildContext context) => Container(
@@ -557,9 +586,9 @@ class _SpeedBubble extends StatelessWidget {
         height: 60,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: const Color(0xF2171C36),
+          color: over ? _signRed : const Color(0xF2171C36),
           shape: BoxShape.circle,
-          border: Border.all(color: _lime, width: 2),
+          border: Border.all(color: over ? Colors.white : _lime, width: 2),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -570,6 +599,38 @@ class _SpeedBubble extends StatelessWidget {
             ),
             const Text('km/j', style: TextStyle(fontSize: 10, color: Colors.white70)),
           ],
+        ),
+      );
+}
+
+/// Speed limit sign like the ones on Malaysian roads: red ring, white face, black number.
+/// Only shown where OpenStreetMap knows the limit.
+class _SpeedLimitSign extends StatelessWidget {
+  const _SpeedLimitSign({required this.kph});
+  final int kph;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+        label: 'Had laju $kph km/j',
+        child: Container(
+          width: 60,
+          height: 60,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+            border: Border.all(color: _signRed, width: 6),
+            boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 6)],
+          ),
+          child: Text(
+            '$kph',
+            style: TextStyle(
+              color: Colors.black,
+              fontSize: kph >= 100 ? 18 : 22,
+              fontWeight: FontWeight.w900,
+              height: 1,
+            ),
+          ),
         ),
       );
 }

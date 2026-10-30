@@ -21,9 +21,11 @@ enum Cue {
   lorry,
   jam,
   crash,
+  speeding, // over the legal limit; lines use {limit}
 }
 
-/// A personality. Lines may use {d} (spoken distance), {street} and {toward} (where an exit leads).
+/// A personality. Lines may use {d} (spoken distance), {street}, {toward} (where an exit leads)
+/// and {limit} (the speed limit in km/h).
 /// Later, each line can map to a recorded clip; today they go through the phone's TTS.
 class VoicePack {
   const VoicePack({
@@ -87,12 +89,14 @@ String spokenDistance(double m, VoicePack pack) {
   return '${((m / 100).round() / 10).toStringAsFixed(1)} ${pack.km}';
 }
 
-/// Picks a random line, avoiding the last one used and any line needing a {street} or {toward} we lack.
+/// Picks a random line, avoiding the last one used and any line needing a {street}, {toward} or
+/// {limit} we lack.
 ({String text, int index})? pickLine(
   List<String>? lines, {
   required String distance,
   required String street,
   String toward = '',
+  String limit = '',
   required Random rng,
   int avoidIndex = -1,
 }) {
@@ -100,7 +104,8 @@ String spokenDistance(double m, VoicePack pack) {
   final usable = <int>[
     for (var i = 0; i < lines.length; i++)
       if ((street.isNotEmpty || !lines[i].contains('{street}')) &&
-          (toward.isNotEmpty || !lines[i].contains('{toward}')))
+          (toward.isNotEmpty || !lines[i].contains('{toward}')) &&
+          (limit.isNotEmpty || !lines[i].contains('{limit}')))
         i,
   ];
   if (usable.isEmpty) return null;
@@ -110,6 +115,7 @@ String spokenDistance(double m, VoicePack pack) {
   final text = lines[i]
       .replaceAll('{d}', distance)
       .replaceAll('{street}', street)
-      .replaceAll('{toward}', toward);
+      .replaceAll('{toward}', toward)
+      .replaceAll('{limit}', limit);
   return (text: text, index: i);
 }

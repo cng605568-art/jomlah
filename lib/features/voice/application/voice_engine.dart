@@ -94,6 +94,9 @@ class VoiceEngine {
     if (_say(cue, distM: distM, priority: 1)) _alerted.add(reportId);
   }
 
+  /// Over the speed limit. Same low priority as road alerts, so it never talks over a turn.
+  bool speeding(int limitKph) => _say(Cue.speeding, limit: '$limitKph', priority: 1);
+
   /// Plays a sample in the current voice (used by the picker).
   void preview() => _say(Cue.police, distM: 300, priority: 3);
 
@@ -104,6 +107,7 @@ class VoiceEngine {
     double distM = 0,
     String street = '',
     String toward = '',
+    String limit = '',
     required int priority,
   }) {
     final s = settings();
@@ -114,6 +118,7 @@ class VoiceEngine {
       distance: spokenDistance(distM, pack),
       street: street,
       toward: toward,
+      limit: limit,
       rng: _rng,
       avoidIndex: _lastIndex[cue] ?? -1,
     );

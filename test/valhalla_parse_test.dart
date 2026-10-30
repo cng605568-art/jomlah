@@ -58,6 +58,8 @@ void main() {
     expect(plans[0].maneuvers.length, 2);
     expect(plans[0].maneuvers.first.streetNames, ['Jalan Ampang']);
     expect(plans[0].totalM, greaterThan(500));
+    // Kept exactly as sent, so speed limits can be asked for along the very same roads.
+    expect(plans[0].encodedShape, _shape);
   });
 
   test('reads highway exit signs and the toll flag', () {

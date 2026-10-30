@@ -76,6 +76,10 @@ const kMamakBoss = VoicePack(
     Cue.crash: [
       'Boss, ada kemalangan depan, {d} lagi. Perlahan, bagi laluan kat ambulans.',
     ],
+    Cue.speeding: [
+      'Boss, perlahan sikit. Had laju sini {limit} je.',
+      'Eh Boss, laju sangat ni. Had laju {limit}. Saman mahal tau.',
+    ],
   },
   now: {
     Cue.turnLeft: ['Belok kiri sekarang, Boss!'],
@@ -158,6 +162,10 @@ const kKlite = VoicePack(
     Cue.crash: [
       'Accident ahead in {d}. Slow down and be human about it.',
     ],
+    Cue.speeding: [
+      'The limit here is {limit}. I know, I know. Slow down anyway.',
+      'Speed limit {limit}. This is not Sepang. Ease off.',
+    ],
   },
   now: {
     Cue.turnLeft: ['Left. Now.'],
@@ -201,6 +209,7 @@ const kSerious = VoicePack(
     Cue.lorry: ['Broken down lorry ahead in {d}.'],
     Cue.jam: ['Heavy traffic ahead in {d}.'],
     Cue.crash: ['Crash reported ahead, in {d}.'],
+    Cue.speeding: ['Speed limit {limit}. Please slow down.'],
   },
   now: {
     Cue.turnLeft: ['Turn left now.'],

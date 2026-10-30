@@ -80,9 +80,14 @@ class RoutePlan {
     required this.durationSec,
     this.hasToll = false,
     this.hasHighway = false,
+    this.encodedShape,
   }) : cumulativeM = _cumulative(shape);
 
   final List<LatLng> shape;
+
+  /// The route line exactly as Valhalla sent it (precision-6 polyline). Sending it back unchanged
+  /// lets Valhalla walk the very same roads when we ask for their speed limits.
+  final String? encodedShape;
   final List<Maneuver> maneuvers;
   final double distanceKm;
   final double durationSec;

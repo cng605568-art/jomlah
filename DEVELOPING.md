@@ -196,3 +196,23 @@ feeds its fixes into `_processFix`, the same function real GPS uses, so the filt
 heading-up camera, voice, jam prompt, arrival sheet and trip stats all run exactly as on a real drive.
 Real GPS is ignored while it runs, and it stops when the trip ends or is cancelled. Road alerts ahead
 (voice) still use the real GPS, so they will not trigger in a simulation.
+
+## Step 12: speed limit sign and over-speed warning
+- After **Jom!** (and after each reroute) the app asks the routing server once for the speed limits
+  along the chosen route: `POST /trace_attributes` with the route's own `encoded_polyline`,
+  `shape_match: edge_walk` and the attributes `edge.speed_limit` and `edge.length`
+  (`ValhallaClient.speedLimits`). The public FOSSGIS server supports this (checked 30 Oct 2026).
+- `SpeedLimits` (routing/domain/speed_limits.dart) turns the edges into distance ranges ("zones")
+  along the route; `currentSpeedLimitProvider` looks up the zone at the car's distance driven
+  (`plan.totalM - remainingM`). Edges without a limit leave a gap, and no sign is shown there.
+- Coverage depends on OpenStreetMap `maxspeed` tags. In a test on 30 Oct 2026: Federal Highway
+  PJ-KL 80% of the length had a limit, PLUS Nilai-Seremban 44%, a KL city route 46%.
+- Your speed bubble turns red at 5 km/h or more over the limit. The voice ("Cue.speeding", lines use
+  `{limit}`) speaks after 3 s over, once per stretch with the same limit, at most once a minute,
+  and never over a turn instruction (`SpeedWarner`). It works in Simulasi too.
+- If the request fails, the trip simply has no sign; nothing else changes.
+
+## Checks on branches
+`.github/workflows/checks.yml` runs `dart analyze` and `flutter test` on every push to a branch other
+than `main` (and on pull requests). Problems show up as annotations on the run summary, with file
+and line. It does not build an APK; `main` still runs the full build, tests included.
