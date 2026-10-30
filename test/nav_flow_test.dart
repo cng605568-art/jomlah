@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
@@ -91,6 +92,15 @@ Future<ProviderContainer> _pump(WidgetTester tester, NavState start, {List<Lane>
 }
 
 void main() {
+  // "Jom!" first asks Android for notification permission. On a phone the system answers; here
+  // nothing would, so answer for it (no permissions granted is fine: the trip starts anyway).
+  setUp(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      const MethodChannel('flutter.baseflow.com/permissions/methods'),
+      (call) async => call.method == 'requestPermissions' ? <int, int>{} : 0,
+    );
+  });
+
   testWidgets('choosing a route shows both options, then Jom! starts the trip', (tester) async {
     final container = await _pump(tester, _choosing(), lanes: _lanes);
 
@@ -102,7 +112,7 @@ void main() {
 
     await tester.tap(find.text('Jom!'));
     await tester.pump();
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
 
     expect(container.read(routingProvider).navigating, isTrue);
     expect(find.byType(TurnCard), findsOneWidget);
