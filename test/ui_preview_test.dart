@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -108,6 +109,18 @@ Widget _phone(Widget overlay, {List<Offset> route = const [], List<Offset> alt =
       ),
     );
 
+/// Tests draw shadows as hard blocks by default; previews should look like the phone.
+Future<void> _withShadows(WidgetTester tester, Future<void> Function() body) async {
+  debugDisableShadows = false;
+  try {
+    tester.binding.renderView.markNeedsPaint();
+    await tester.pump();
+    await body();
+  } finally {
+    debugDisableShadows = true;
+  }
+}
+
 /// Phone-sized test screen with the usual status and gesture bars.
 Future<void> _setPhone(WidgetTester tester) async {
   tester.view.physicalSize = const Size(780, 1688);
@@ -153,7 +166,7 @@ void main() {
       ])),
     ));
     await tester.pumpAndSettle();
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/1_browse.png'));
+    await _withShadows(tester, () => expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/1_browse.png')));
   }, skip: !_enabled);
 
   testWidgets('2 report grid', (tester) async {
@@ -175,7 +188,7 @@ void main() {
       ),
     ])));
     await tester.pumpAndSettle();
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/2_report.png'));
+    await _withShadows(tester, () => expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/2_report.png')));
   }, skip: !_enabled);
 
   testWidgets('3 choosing a route', (tester) async {
@@ -214,7 +227,7 @@ void main() {
       alt: const [Offset(175, 470), Offset(175, 410), Offset(330, 410), Offset(360, 300)],
     ));
     await tester.pumpAndSettle();
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/3_choose.png'));
+    await _withShadows(tester, () => expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/3_choose.png')));
   }, skip: !_enabled);
 
   testWidgets('4 driving', (tester) async {
@@ -256,7 +269,7 @@ void main() {
       ),
     ));
     await tester.pumpAndSettle();
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/4_drive.png'));
+    await _withShadows(tester, () => expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/4_drive.png')));
   }, skip: !_enabled);
 
   testWidgets('5 over the speed limit', (tester) async {
@@ -266,6 +279,6 @@ void main() {
       Positioned(left: 92, bottom: driveBase + 4, child: SpeedLimitSign(kph: 60)),
     ])));
     await tester.pumpAndSettle();
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/5_over_limit.png'));
+    await _withShadows(tester, () => expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/5_over_limit.png')));
   }, skip: !_enabled);
 }
