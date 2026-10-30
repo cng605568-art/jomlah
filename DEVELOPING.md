@@ -23,6 +23,12 @@ The APK then appears under **Releases**.
   uninstall once and reinstall. Never commit the key (`.gitignore` blocks `*.p12`).
   The same key can later serve as the Google Play upload key.
 - Map tiles come from OSM's public server for dev only. Self-host before real traffic.
+- GitHub's build machines don't include the exact Android NDK Flutter asks for, so the step
+  **Install Android NDK (with retries)** (`.github/scripts/install-ndk.sh`) downloads it first, up to
+  3 times, and otherwise builds with the closest NDK already on the machine. Without it, Gradle
+  downloaded the NDK mid-build and one broken download (`sdkmanager ... non-zero exit value 1`)
+  failed the whole build. If a download still breaks during the build, it is retried once.
+  The build works on both Ubuntu 24.04 and 26.04 machines (tested Oct 2026).
 
 ## Routing (step 2)
 - In the app: **long-press the map** to pick a destination. The route is drawn in lime, the top

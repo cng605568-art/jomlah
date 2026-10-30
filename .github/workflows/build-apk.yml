@@ -34,6 +34,11 @@ jobs:
             cp -r /tmp/scaffold/android ./android
           fi
 
+      # Gradle would otherwise download the NDK (about 1 GB) mid-build, where one broken download
+      # fails the build. This fetches it first, with retries. See the script for details.
+      - name: Install Android NDK (with retries)
+        run: bash .github/scripts/install-ndk.sh
+
       # Our launcher icon (adaptive icon for Android 8+, rounded square for older phones).
       # android/ is generated, so the icon files live in branding/icon-res and are copied over
       # Flutter's default icon on every run. The manifest already points at @mipmap/ic_launcher.
@@ -125,7 +130,7 @@ jobs:
       - run: flutter pub get
 
       - name: Analyze (informational, does not block the build)
-        run: flutter analyze
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings   # only real errors show in red
         continue-on-error: true
 
       - name: Unit tests
@@ -181,6 +186,12 @@ jobs:
           }
 
           if build; then exit 0; fi
+
+          # A broken download of an Android tool (sdkmanager) is usually a one-off: try once more.
+          if grep -q 'sdkmanager' build.log && grep -q 'non-zero exit value' build.log; then
+            echo "::warning title=Android tool download failed::Retrying the build once."
+            if build; then exit 0; fi
+          fi
 
           if python3 - <<'PY'
           import pathlib, re, sys
