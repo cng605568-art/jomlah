@@ -75,6 +75,53 @@ jobs:
           p.write_text(s)
           PY
 
+      # Release signing. Every runner is a brand-new machine, so without our own key each build would be
+      # signed with a new throwaway debug key, and Android refuses to install an update that is signed
+      # with a different key. Our key lives in two repository secrets
+      # (Settings > Secrets and variables > Actions > Secrets):
+      #   ANDROID_KEYSTORE_BASE64    the keystore file jomlah-release.p12, base64 encoded (alias "jomlah")
+      #   ANDROID_KEYSTORE_PASSWORD  its password (the same password protects the key)
+      # Without them (for example in a fork) the APK is debug-signed and the run shows a warning.
+      - name: Set up release signing
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEYSTORE_PASSWORD" ]; then
+            echo "::warning title=Debug-signed APK::The signing secrets are not set, so this APK uses a throwaway key. Phones must uninstall the old Jomlah before installing it."
+            exit 0
+          fi
+          ks="$RUNNER_TEMP/jomlah-release.p12"
+          printf '%s' "$KEYSTORE_BASE64" | tr -d '\r\n ' | base64 -d > "$ks"
+          if ! keytool -list -keystore "$ks" -storetype PKCS12 -storepass "$KEYSTORE_PASSWORD" -alias jomlah > /dev/null; then
+            echo "::error title=Signing key unreadable::Check the ANDROID_KEYSTORE_BASE64 and ANDROID_KEYSTORE_PASSWORD secrets (copy them again from the secrets file)."
+            exit 1
+          fi
+          KS="$ks" python3 - <<'PY'
+          import os, pathlib, sys
+          p = pathlib.Path('android/app/build.gradle.kts')
+          s = p.read_text()
+          debug = 'signingConfig = signingConfigs.getByName("debug")'
+          if debug not in s or '\n    buildTypes {' not in s:
+              print('::error title=Signing not applied::android/app/build.gradle.kts no longer looks like the Flutter template, so the release key could not be added.')
+              sys.exit(1)
+          block = (
+              '\n    signingConfigs {\n'
+              '        create("release") {\n'
+              '            storeFile = file("%s")\n'
+              '            storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")\n'
+              '            keyAlias = "jomlah"\n'
+              '            keyPassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")\n'
+              '        }\n'
+              '    }\n' % os.environ['KS']
+          )
+          s = s.replace('\n    buildTypes {', block + '\n    buildTypes {', 1)
+          s = s.replace(debug, 'signingConfig = signingConfigs.getByName("release")', 1)
+          p.write_text(s)
+          print('Release signing configured.')
+          PY
+
       - run: flutter pub get
 
       - name: Analyze (informational, does not block the build)
@@ -103,6 +150,7 @@ jobs:
           PHOTON_URL: ${{ vars.PHOTON_URL }}
           API_URL: ${{ vars.API_URL }}
           REPO: ${{ github.repository }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}   # read by Gradle when signing
         run: |
           args=(--release)
           if [ -n "$VALHALLA_URL" ]; then args+=("--dart-define=VALHALLA_URL=$VALHALLA_URL"); fi
@@ -170,6 +218,17 @@ jobs:
           fi
 
           report_failure
+
+      # Puts the signing certificate's fingerprint on the run summary. It should be the same on every
+      # build; if it changes, phones will refuse the update. Informational only, never fails the build.
+      - name: Show signing certificate
+        continue-on-error: true
+        shell: bash
+        run: |
+          bt=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -n 1)
+          fp=$("${bt}apksigner" verify --print-certs build/app/outputs/flutter-apk/app-release.apk \
+               | grep -m1 'SHA-256 digest' | sed 's/.*: //')
+          echo "::notice title=APK signing certificate::SHA-256 ${fp:-unknown}"
 
       - name: Upload APK as a build artifact
         uses: actions/upload-artifact@v4

@@ -11,6 +11,8 @@ ios/
 # never commit signing keys
 *.jks
 *.keystore
+*.p12
+*signing-secrets*
 key.properties
 
 # backend secrets

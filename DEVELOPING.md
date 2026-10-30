@@ -14,7 +14,14 @@ The APK then appears under **Releases**.
 ## Notes
 - The workflow generates the `android/` folder on first run, then patches in INTERNET and
   location permissions. Commit `android/` later if you need to customise it.
-- Release builds here are debug-signed. Fine for sideloading testers, not for Google Play.
+- Release builds are signed with the project's own key (alias `jomlah`), so a new APK installs over
+  the old one. The key is stored in two repository secrets, `ANDROID_KEYSTORE_BASE64` and
+  `ANDROID_KEYSTORE_PASSWORD`; the workflow step **Set up release signing** uses them. Without the
+  secrets (for example in a fork) the APK falls back to a throwaway debug key and the run shows a
+  warning. Each run's summary shows the signing certificate's SHA-256; it must never change.
+  Keep the key file and password backed up somewhere private: if they are lost, every user has to
+  uninstall once and reinstall. Never commit the key (`.gitignore` blocks `*.p12`).
+  The same key can later serve as the Google Play upload key.
 - Map tiles come from OSM's public server for dev only. Self-host before real traffic.
 
 ## Routing (step 2)
