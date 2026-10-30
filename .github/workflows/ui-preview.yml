@@ -1,0 +1,52 @@
+name: UI previews
+
+# Draws the app's main screens from the real widgets (test/ui_preview_test.dart) and puts the pictures
+# on the ui-previews branch, so the look can be checked without a phone. Runs on pushes to ui-*
+# branches, and on demand from the Actions tab.
+on:
+  push:
+    branches: ['ui-*']
+  workflow_dispatch:
+
+permissions:
+  contents: write # to update the ui-previews branch
+
+jobs:
+  previews:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Draw the screens
+        shell: bash
+        run: |
+          FLUTTER_ROOT="$(dirname "$(dirname "$(command -v flutter)")")"
+          export MATERIAL_ICONS="$(find "$FLUTTER_ROOT/bin/cache" -name 'MaterialIcons-Regular.otf' | head -n 1)"
+          echo "Material icons font: ${MATERIAL_ICONS:-not found}"
+          UI_PREVIEW=1 flutter test --update-goldens test/ui_preview_test.dart
+
+      - name: Put the pictures on the ui-previews branch
+        shell: bash
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          out="$RUNNER_TEMP/previews"
+          mkdir -p "$out"
+          cp test/goldens/*.png "$out/"
+          cd "$out"
+          echo "Screens drawn from $GITHUB_SHA on $GITHUB_REF_NAME." > README.md
+          git init -q -b ui-previews
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -q -m "UI previews from $GITHUB_SHA"
+          git push -q -f "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:ui-previews
+          ls -la

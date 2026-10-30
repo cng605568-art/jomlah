@@ -17,7 +17,11 @@ class AppColors {
   static const lime = Color(0xFFC8FF3D); // brand accent from the icon, used sparingly
   static const textMuted = Color(0xFFA9B6D6); // secondary text
   static const warning = Color(0xFFF59E0B); // GPS problems, road alerts
-  static const danger = Color(0xFFEF4444); // over the speed limit
+  static const danger = Color(0xFFEF4444); // over the speed limit, end trip
+  static const go = Color(0xFF34D399); // arrival time, "fastest"
+  static const report = Color(0xFFF97316); // the orange report button
+  static const reportLight = Color(0xFFFBBF24);
+  static const turnCard = Color(0xFF1E40AF); // bottom-right of the blue turn card gradient
 
   // On the map
   static const route = Color(0xFF2F7BFF); // the route ahead
@@ -51,10 +55,11 @@ ThemeData buildAppTheme() {
     outlineVariant: AppColors.outline,
   );
 
-  final rounded = RoundedRectangleBorder(borderRadius: BorderRadius.circular(16));
+  final rounded = RoundedRectangleBorder(borderRadius: BorderRadius.circular(18));
 
   return ThemeData(
     useMaterial3: true,
+    fontFamily: 'PlusJakartaSans',
     colorScheme: scheme,
     scaffoldBackgroundColor: AppColors.navy,
     canvasColor: AppColors.surface,
@@ -62,6 +67,7 @@ ThemeData buildAppTheme() {
       backgroundColor: AppColors.surface,
       surfaceTintColor: Colors.transparent,
       dragHandleColor: AppColors.outline,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
     ),
     snackBarTheme: const SnackBarThemeData(
       backgroundColor: AppColors.raised,
@@ -88,13 +94,15 @@ ThemeData buildAppTheme() {
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         shape: rounded,
+        textStyle: const TextStyle(fontFamily: 'PlusJakartaSans', fontWeight: FontWeight.w700),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         foregroundColor: Colors.white,
-        side: const BorderSide(color: AppColors.outline),
+        side: const BorderSide(color: AppColors.outline, width: 1.5),
         shape: rounded,
+        textStyle: const TextStyle(fontFamily: 'PlusJakartaSans', fontWeight: FontWeight.w700),
       ),
     ),
     textButtonTheme: TextButtonThemeData(

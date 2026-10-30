@@ -32,6 +32,7 @@ import '../domain/trip_stats.dart';
 import 'arrival_sheet.dart';
 import 'car_marker.dart';
 import 'location_banner.dart';
+import 'overlays.dart';
 import 'vote_prompt.dart';
 import 'widgets.dart';
 
@@ -400,6 +401,14 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
     final limit = ref.watch(currentSpeedLimitProvider); // null where the map does not know it
     final kmh = _speedMps * 3.6;
 
+    // Where the floating controls sit: just above the trip bar while driving, near the bottom
+    // otherwise. The phone's own top and bottom bars are kept clear.
+    final choosing = nav.previewing;
+    final driving = nav.navigating;
+    final topInset = MediaQuery.paddingOf(context).top;
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+    final base = driving ? TripBar.height + bottomInset + 16 : bottomInset + 28;
+
     final nightMode = ref.watch(nightModeProvider);
     final night = nightMode == NightMode.always ||
         (nightMode == NightMode.auto &&
@@ -535,84 +544,110 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
                   ],
                 ),
               ),
-              const RichAttributionWidget(
-                attributions: [TextSourceAttribution('OpenStreetMap contributors')],
-              ),
             ],
           ),
+          // Top: search (with settings), or the route back-bar / turn card, plus banners and prompts.
           Positioned(
             top: 0,
             left: 0,
             right: 0,
             child: SafeArea(
               child: Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Search until a destination is chosen, then route options or turn-by-turn.
                     if (nav.destination == null)
-                      SearchBox(onPick: (place) => _pickDestination(place.position, place: place))
+                      SearchBox(
+                        onPick: (place) => _pickDestination(place.position, place: place),
+                        trailing: const SettingsButton(),
+                      )
                     else
-                      NavBanner(onSimulate: _startSimulation),
+                      NavTopArea(placeName: _destPlace?.name),
                     const LocationBanner(),
                     if (_stale) const StaleGpsBanner(),
+                    const Padding(padding: EdgeInsets.only(top: 8), child: VotePrompt()),
+                    if (_askJam)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: _JamPrompt(
+                          onReport: _reportJam,
+                          onDismiss: () {
+                            _jamTimer?.cancel();
+                            setState(() => _askJam = false);
+                          },
+                        ),
+                      ),
                   ],
                 ),
               ),
             ),
           ),
-          Positioned(left: 0, right: 0, bottom: 0, child: ReportBar(at: here)),
-          const Positioned(left: 12, right: 12, bottom: 210, child: VotePrompt()),
-          if (_askJam)
+          // Bottom: route choices before Jom!, the trip bar while driving.
+          if (nav.destination != null)
             Positioned(
-              left: 12,
-              right: 12,
-              bottom: 280,
-              child: _JamPrompt(
-                onReport: _reportJam,
-                onDismiss: () {
-                  _jamTimer?.cancel();
-                  setState(() => _askJam = false);
-                },
-              ),
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: NavBottomArea(onReport: _openReportSheet, onSimulate: _startSimulation),
             ),
-          const Positioned(left: 16, bottom: 140, child: SettingsButton()),
-          if (here != null)
+          // Map credit, required by OpenStreetMap: kept clear of the panels and buttons.
+          Positioned(
+            left: 0,
+            right: 0,
+            top: choosing ? topInset + 8 + 52 + 6 : null,
+            bottom: choosing ? null : (driving ? TripBar.height + bottomInset + 2 : bottomInset + 4),
+            child: const Center(child: _OsmCredit()),
+          ),
+          // Floating controls (hidden while choosing a route; the panel needs the room).
+          if (!choosing && here != null)
             Positioned(
               left: 16,
-              bottom: 196,
-              child: _SpeedBubble(kmh: kmh, over: _speedWarner.isOver(limit, kmh)),
+              bottom: base,
+              child: SpeedCard(kmh: kmh, over: _speedWarner.isOver(limit, kmh)),
             ),
-          if (limit != null)
-            Positioned(left: 84, bottom: 196, child: _SpeedLimitSign(kph: limit)),
-          if (_sim != null)
-            const Positioned(left: 16, bottom: 262, child: _SimPill()),
-          if (!_follow && here != null)
+          if (!choosing && limit != null)
+            Positioned(left: 92, bottom: base + 4, child: SpeedLimitSign(kph: limit)),
+          if (!choosing && _sim != null)
+            Positioned(left: 16, bottom: base + 80, child: const _SimPill()),
+          if (!choosing && !driving)
+            Positioned(right: 16, bottom: base, child: ReportButton(onPressed: _openReportSheet)),
+          if (driving)
+            Positioned(right: 16, bottom: base, child: const SettingsButton(glass: true)),
+          if (!choosing && !_follow && here != null)
             Positioned(
-              right: 16,
-              bottom: 140,
-              child: nav.navigating
-                  ? FloatingActionButton.extended(
-                      heroTag: 'recenter',
+              right: driving ? 16 : 22,
+              bottom: driving ? base + 64 : base + 76,
+              child: driving
+                  ? _BackToCarButton(onPressed: () => _recenter(here))
+                  : MapButton(
+                      icon: Icons.my_location_rounded,
                       onPressed: () => _recenter(here),
-                      icon: const Icon(Icons.navigation),
-                      label: const Text('Kembali'),
-                    )
-                  : FloatingActionButton.small(
-                      heroTag: 'recenter',
-                      onPressed: () => _recenter(here),
-                      child: const Icon(Icons.my_location),
+                      tooltip: 'Lokasi saya',
                     ),
             ),
         ],
       ),
     );
   }
-}
 
-const _signRed = Color(0xFFD7182A);
+  /// The orange button: pick what you see, and it is reported where you are.
+  void _openReportSheet() {
+    if (_here == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tunggu GPS dapat lokasi dulu.')),
+      );
+      return;
+    }
+    showReportSheet(context, onPick: (type) {
+      final at = _here;
+      if (at == null || ref.read(reportsProvider).submitting) return;
+      HapticFeedback.mediumImpact();
+      ref.read(reportsProvider.notifier).report(type, at);
+    });
+  }
+}
 
 /// The route line: bright blue with a dark navy edge, so it reads on light and dark maps.
 Polyline _routeLine(List<LatLng> points) => Polyline(
@@ -622,70 +657,6 @@ Polyline _routeLine(List<LatLng> points) => Polyline(
       borderStrokeWidth: 2.5,
       borderColor: AppColors.routeBorder,
     );
-
-class _SpeedBubble extends StatelessWidget {
-  const _SpeedBubble({required this.kmh, this.over = false});
-  final double kmh;
-  final bool over; // over the speed limit: turn red
-
-  @override
-  Widget build(BuildContext context) => Container(
-        width: 60,
-        height: 60,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: over ? AppColors.danger : AppColors.overlay,
-          shape: BoxShape.circle,
-          border: Border.all(color: over ? Colors.white : AppColors.primary, width: 2.5),
-          boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 6)],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              kmh.round().toString(),
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, height: 1),
-            ),
-            Text(
-              'km/j',
-              style: TextStyle(fontSize: 10, color: over ? Colors.white : AppColors.textMuted),
-            ),
-          ],
-        ),
-      );
-}
-
-/// Speed limit sign like the ones on Malaysian roads: red ring, white face, black number.
-/// Only shown where OpenStreetMap knows the limit.
-class _SpeedLimitSign extends StatelessWidget {
-  const _SpeedLimitSign({required this.kph});
-  final int kph;
-
-  @override
-  Widget build(BuildContext context) => Semantics(
-        label: 'Had laju $kph km/j',
-        child: Container(
-          width: 60,
-          height: 60,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            shape: BoxShape.circle,
-            border: Border.all(color: _signRed, width: 6),
-            boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 6)],
-          ),
-          child: Text(
-            '$kph',
-            style: TextStyle(
-              color: Colors.black,
-              fontSize: kph >= 100 ? 18 : 22,
-              fontWeight: FontWeight.w900,
-              height: 1,
-            ),
-          ),
-        ),
-      );
-}
 
 class _JamPrompt extends StatelessWidget {
   const _JamPrompt({required this.onReport, required this.onDismiss});
@@ -705,9 +676,11 @@ class _JamPrompt extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           child: Row(
             children: [
+              const ReportBadge(type: ReportType.jam, size: 36),
+              const SizedBox(width: 10),
               const Expanded(
                 child: Text(
-                  '🐌 Nampak macam jem. Lapor Jem Teruk?',
+                  'Nampak macam jem. Lapor Jem Teruk?',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                 ),
               ),
@@ -742,6 +715,50 @@ class _SimPill extends StatelessWidget {
         child: const Text(
           '🧪 Simulasi',
           style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.cyan),
+        ),
+      );
+}
+
+/// "Kembali": follow the car again, while driving.
+class _BackToCarButton extends StatelessWidget {
+  const _BackToCarButton({required this.onPressed});
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => Material(
+        color: AppColors.primaryDeep,
+        elevation: 8,
+        shadowColor: Colors.black54,
+        borderRadius: BorderRadius.circular(26),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(26),
+          onTap: onPressed,
+          child: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.navigation_rounded, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Text('Kembali', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+              ],
+            ),
+          ),
+        ),
+      );
+}
+
+/// Credit for the map data, required by OpenStreetMap's licence.
+class _OsmCredit extends StatelessWidget {
+  const _OsmCredit();
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+        decoration: BoxDecoration(color: const Color(0xB3FFFFFF), borderRadius: BorderRadius.circular(4)),
+        child: const Text(
+          '© OpenStreetMap contributors',
+          style: TextStyle(fontSize: 10, color: Color(0xFF3A4566), fontWeight: FontWeight.w600),
         ),
       );
 }

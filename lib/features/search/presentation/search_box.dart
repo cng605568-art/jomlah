@@ -8,8 +8,11 @@ import '../domain/place.dart';
 import '../../../core/app_theme.dart';
 
 class SearchBox extends ConsumerStatefulWidget {
-  const SearchBox({super.key, required this.onPick});
+  const SearchBox({super.key, required this.onPick, this.trailing});
   final void Function(Place place) onPick;
+
+  /// Shown at the right end of the search pill while it is empty (the settings button).
+  final Widget? trailing;
 
   @override
   ConsumerState<SearchBox> createState() => _SearchBoxState();
@@ -96,13 +99,14 @@ class _SearchBoxState extends ConsumerState<SearchBox> {
     final placesCtl = ref.read(placesProvider.notifier);
     final searching = s.query.length >= 3;
     final showShortcuts = _focus.hasFocus && !searching;
+    final showChips = !_focus.hasFocus && _text.text.isEmpty;
 
-    return Material(
+    final pill = Material(
       color: AppColors.overlay,
-      elevation: 6,
+      elevation: 8,
       shadowColor: Colors.black54,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(28),
         side: const BorderSide(color: AppColors.outline),
       ),
       clipBehavior: Clip.antiAlias,
@@ -117,14 +121,21 @@ class _SearchBoxState extends ConsumerState<SearchBox> {
               ref.read(searchProvider.notifier).onQueryChanged(v, near: _near());
               setState(() {}); // shows or hides the clear button
             },
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             decoration: InputDecoration(
-              hintText: 'Nak ke mana? (atau tekan lama pada peta)',
-              prefixIcon: const Icon(Icons.search, color: AppColors.sky),
-              suffixIcon: _text.text.isEmpty
-                  ? null
-                  : IconButton(icon: const Icon(Icons.close), onPressed: _reset),
+              hintText: 'Nak ke mana?',
+              hintStyle: const TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.w600),
+              prefixIcon: const Padding(
+                padding: EdgeInsets.only(left: 8),
+                child: Icon(Icons.search_rounded, color: AppColors.sky),
+              ),
+              suffixIcon: _text.text.isNotEmpty
+                  ? IconButton(icon: const Icon(Icons.close_rounded), onPressed: _reset)
+                  : (widget.trailing == null
+                      ? null
+                      : Padding(padding: const EdgeInsets.only(right: 7), child: widget.trailing)),
               border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(vertical: 16),
+              contentPadding: const EdgeInsets.symmetric(vertical: 18),
             ),
           ),
           if (showShortcuts) ...[
@@ -188,7 +199,69 @@ class _SearchBoxState extends ConsumerState<SearchBox> {
         ],
       ),
     );
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        pill,
+        if (showChips)
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _PlaceChip(
+                  icon: Icons.home_rounded,
+                  label: 'Rumah',
+                  onTap: () => _shortcut(places.home, 'Rumah'),
+                ),
+                _PlaceChip(
+                  icon: Icons.work_rounded,
+                  label: 'Pejabat',
+                  onTap: () => _shortcut(places.work, 'Pejabat'),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
   }
+}
+
+/// Small pill under the search bar: one tap to go home or to work.
+class _PlaceChip extends StatelessWidget {
+  const _PlaceChip({required this.icon, required this.label, required this.onTap});
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+        color: AppColors.overlay,
+        elevation: 4,
+        shadowColor: Colors.black45,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(19),
+          side: const BorderSide(color: AppColors.outline),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(19),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 18, color: AppColors.sky),
+                const SizedBox(width: 8),
+                Text(label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+              ],
+            ),
+          ),
+        ),
+      );
 }
 
 /// Home / Work button. Tap to go there, long-press to remove it.

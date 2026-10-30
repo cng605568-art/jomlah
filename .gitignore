@@ -19,3 +19,6 @@ key.properties
 .env
 server/.env
 node_modules/
+
+# pictures drawn by the UI previews workflow
+test/goldens/

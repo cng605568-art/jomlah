@@ -8,17 +8,33 @@ import '../../routing/domain/route_prefs.dart';
 import '../../voice/application/voice_providers.dart';
 import '../../voice/domain/voice_packs.dart';
 import '../../../core/app_theme.dart';
+import '../../map/presentation/overlays.dart';
 
 class SettingsButton extends ConsumerWidget {
-  const SettingsButton({super.key});
+  const SettingsButton({super.key, this.glass = false});
+
+  /// true: a floating button over the map (while driving); false: the small round button inside
+  /// the search bar.
+  final bool glass;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final muted = ref.watch(voiceSettingsProvider.select((s) => s.muted));
-    return IconButton.filled(
-      tooltip: 'Tetapan',
-      onPressed: () => _openSheet(context),
-      icon: Icon(muted ? Icons.volume_off : Icons.tune),
+    final icon = muted ? Icons.volume_off_rounded : Icons.tune_rounded;
+    if (glass) {
+      return MapButton(icon: icon, onPressed: () => _openSheet(context), tooltip: 'Tetapan');
+    }
+    return Tooltip(
+      message: 'Tetapan',
+      child: Material(
+        color: AppColors.raised,
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: () => _openSheet(context),
+          child: SizedBox(width: 42, height: 42, child: Icon(icon, color: Colors.white, size: 22)),
+        ),
+      ),
     );
   }
 

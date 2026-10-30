@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../application/routing_providers.dart';
 import '../domain/route_plan.dart';
-import '../../../core/app_theme.dart';
+import '../../map/presentation/overlays.dart';
 
 /// Valhalla maneuver type -> icon. Full list: Valhalla docs, "maneuver types".
 IconData maneuverIcon(int type) {
@@ -49,11 +49,31 @@ IconData maneuverIcon(int type) {
 String formatDistance(double m) =>
     m < 1000 ? '${(m / 10).round() * 10} m' : '${(m / 1000).toStringAsFixed(1)} km';
 
-class NavBanner extends ConsumerWidget {
-  const NavBanner({super.key, this.onSimulate});
+/// What the exit sign says, as one line: "Keluar 205 · SUKE · ke Putrajaya / Cyberjaya".
+String? signText(ExitSign? sign) {
+  if (sign == null || sign.isEmpty) return null;
+  final parts = [
+    if (sign.numberText != null) 'Keluar ${sign.numberText}',
+    if (sign.branchText != null) sign.branchText!,
+    if (sign.towardText != null) 'ke ${sign.towardText}',
+  ];
+  return parts.isEmpty ? null : parts.join(' · ');
+}
 
-  /// When set, the route preview offers a pretend drive at the chosen speed in km/h.
-  final void Function(double kmh)? onSimulate;
+/// Minutes left, scaled from the route's own estimate by the distance still to go.
+int minutesLeft(NavState nav) {
+  final plan = nav.plan;
+  if (plan == null || plan.totalM == 0) return 0;
+  return (plan.durationSec * (nav.remainingM / plan.totalM) / 60).ceil();
+}
+
+/// Top of the screen once a destination is picked: searching, errors, the back bar while choosing
+/// a route, and the blue turn card while driving.
+class NavTopArea extends ConsumerWidget {
+  const NavTopArea({super.key, this.placeName});
+
+  /// The searched place's name, if the destination came from search.
+  final String? placeName;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -62,7 +82,7 @@ class NavBanner extends ConsumerWidget {
 
     if (nav.destination == null) return const SizedBox.shrink();
     if (nav.loading) {
-      return _Card(
+      return StatusCard(
         onClose: cancel,
         child: const Row(children: [
           SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
@@ -71,202 +91,94 @@ class NavBanner extends ConsumerWidget {
         ]),
       );
     }
-    if (nav.error != null) {
-      return _Card(onClose: cancel, child: Text(nav.error!));
-    }
+    if (nav.error != null) return StatusCard(onClose: cancel, child: Text(nav.error!));
     if (nav.arrived) {
-      return _Card(onClose: cancel, child: const Text('Sampai! 🎉 Terima kasih sebab Jomlah.'));
+      return StatusCard(onClose: cancel, child: const Text('Sampai! 🎉 Terima kasih sebab Jomlah.'));
     }
-
     if (nav.previewing) {
-      final notifier = ref.read(routingProvider.notifier);
-      var fastest = 0;
-      for (var i = 1; i < nav.candidates.length; i++) {
-        if (nav.candidates[i].durationSec < nav.candidates[fastest].durationSec) fastest = i;
-      }
-      return _Card(
-        onClose: cancel,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Pilih laluan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: [
-                for (var i = 0; i < nav.candidates.length; i++)
-                  ChoiceChip(
-                    selected: i == nav.selected,
-                    onSelected: (_) => notifier.choose(i),
-                    label: Text(
-                      '${nav.candidates.length > 1 && i == fastest ? 'Terpantas · ' : ''}'
-                      '${(nav.candidates[i].durationSec / 60).ceil()} min · '
-                      '${nav.candidates[i].distanceKm.toStringAsFixed(1)} km'
-                      '${nav.candidates[i].hasToll ? ' · Tol' : ''}',
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 52,
-                    child: FilledButton.icon(
-                      onPressed: () async {
-                        // Android 13+ hides the "navigation active" notice unless allowed.
-                        try {
-                          await Permission.notification.request();
-                        } catch (_) {}
-                        notifier.begin();
-                      },
-                      icon: const Icon(Icons.navigation),
-                      label: const Text('Jom!', style: TextStyle(fontSize: 18)),
-                    ),
-                  ),
-                ),
-                if (onSimulate != null) ...[
-                  const SizedBox(width: 8),
-                  PopupMenuButton<double>(
-                    tooltip: 'Simulasi pemanduan',
-                    onSelected: onSimulate,
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(value: 30.0, child: Text('30 km/j (bandar)')),
-                      PopupMenuItem(value: 60.0, child: Text('60 km/j')),
-                      PopupMenuItem(value: 90.0, child: Text('90 km/j (lebuh raya)')),
-                      PopupMenuItem(value: 8.0, child: Text('8 km/j (jem)')),
-                    ],
-                    child: Container(
-                      height: 52,
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: AppColors.outline),
-                        color: AppColors.raised,
-                        borderRadius: BorderRadius.circular(26),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.science_outlined, size: 20),
-                          SizedBox(width: 6),
-                          Text('Simulasi'),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ],
-        ),
-      );
+      return TopBackBar(title: placeName ?? 'Destinasi pilihan', onBack: cancel);
     }
 
-    final plan = nav.plan!;
-    final next = nav.next!;
-    final etaMin = plan.totalM == 0
-        ? 0
-        : (plan.durationSec * (nav.remainingM / plan.totalM) / 60).ceil();
-
-    return _Card(
-      onClose: cancel,
-      child: Row(
-        children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: AppColors.primary,
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: Icon(maneuverIcon(next.type), size: 38, color: Colors.white),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  formatDistance(nav.distanceToNextM),
-                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
-                ),
-                Text(next.instruction, maxLines: 2, overflow: TextOverflow.ellipsis),
-                if (next.sign != null && !next.sign!.isEmpty) _SignChip(sign: next.sign!),
-                const SizedBox(height: 4),
-                Text(
-                  nav.rerouting
-                      ? 'Mengira semula…'
-                      : 'Tinggal ${formatDistance(nav.remainingM)} · $etaMin min',
-                  style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+    final next = nav.next;
+    if (next == null) return const SizedBox.shrink();
+    final street = next.streetNames.isEmpty ? next.instruction : next.streetNames.first;
+    return TurnCard(
+      icon: maneuverIcon(next.type),
+      distance: formatDistance(nav.distanceToNextM),
+      title: street,
+      sign: signText(next.sign),
+      status: nav.rerouting ? 'Mengira semula…' : null,
     );
   }
 }
 
-class _Card extends StatelessWidget {
-  const _Card({required this.child, this.onClose});
-  final Widget child;
-  final VoidCallback? onClose;
+/// Bottom of the screen once a destination is picked: route choices before "Jom!", the trip bar
+/// while driving, nothing otherwise.
+class NavBottomArea extends ConsumerWidget {
+  const NavBottomArea({super.key, required this.onReport, this.onSimulate});
+
+  final VoidCallback onReport;
+
+  /// When set, the route choice offers a pretend drive at the chosen speed in km/h.
+  final void Function(double kmh)? onSimulate;
 
   @override
-  Widget build(BuildContext context) => Material(
-        color: AppColors.overlay,
-        elevation: 6,
-        shadowColor: Colors.black54,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-          side: const BorderSide(color: AppColors.outline),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
-          child: Row(
-            children: [
-              Expanded(child: child),
-              if (onClose != null)
-                IconButton(onPressed: onClose, icon: const Icon(Icons.close), tooltip: 'Batal'),
-            ],
-          ),
-        ),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final nav = ref.watch(routingProvider);
+    final notifier = ref.read(routingProvider.notifier);
+
+    if (nav.previewing && nav.candidates.isNotEmpty) {
+      var fastest = 0;
+      for (var i = 1; i < nav.candidates.length; i++) {
+        if (nav.candidates[i].durationSec < nav.candidates[fastest].durationSec) fastest = i;
+      }
+      return RouteOptionsPanel(
+        options: [
+          for (var i = 0; i < nav.candidates.length; i++)
+            RouteOption(
+              minutes: (nav.candidates[i].durationSec / 60).ceil(),
+              km: nav.candidates[i].distanceKm,
+              fastest: nav.candidates.length > 1 && i == fastest,
+              toll: nav.candidates[i].hasToll,
+            ),
+        ],
+        selected: nav.selected,
+        onSelect: notifier.choose,
+        onGo: () async {
+          // Android 13+ hides the "navigation active" notice unless allowed.
+          try {
+            await Permission.notification.request();
+          } catch (_) {}
+          notifier.begin();
+        },
+        simulate: onSimulate == null
+            ? null
+            : PopupMenuButton<double>(
+                tooltip: 'Simulasi pemanduan',
+                onSelected: onSimulate,
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 30.0, child: Text('30 km/j (bandar)')),
+                  PopupMenuItem(value: 60.0, child: Text('60 km/j')),
+                  PopupMenuItem(value: 90.0, child: Text('90 km/j (lebuh raya)')),
+                  PopupMenuItem(value: 8.0, child: Text('8 km/j (jem)')),
+                ],
+                child: const SimulateButtonFace(),
+              ),
       );
-}
+    }
 
-/// Looks like the green expressway signs: "Keluar 205 · SUKE · ke Putrajaya / Cyberjaya".
-class _SignChip extends StatelessWidget {
-  const _SignChip({required this.sign});
-  final ExitSign sign;
-
-  @override
-  Widget build(BuildContext context) {
-    final parts = [
-      if (sign.numberText != null) 'Keluar ${sign.numberText}',
-      if (sign.branchText != null) sign.branchText!,
-      if (sign.towardText != null) 'ke ${sign.towardText}',
-    ];
-    if (parts.isEmpty) return const SizedBox.shrink();
-    return Container(
-      margin: const EdgeInsets.only(top: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0B6B3A),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: Colors.white70),
-      ),
-      child: Text(
-        parts.join(' · '),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
-      ),
-    );
+    if (nav.navigating) {
+      final minutes = minutesLeft(nav);
+      final arrive = formatClock(DateTime.now().add(Duration(minutes: minutes)));
+      return TripBar(
+        minutes: minutes,
+        detail: nav.rerouting
+            ? 'Mengira semula…'
+            : '${formatDistance(nav.remainingM)} · tiba $arrive',
+        onReport: onReport,
+        onEnd: notifier.cancel,
+      );
+    }
+    return const SizedBox.shrink();
   }
 }

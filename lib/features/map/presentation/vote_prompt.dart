@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../application/providers.dart';
+import 'overlays.dart';
 import '../../../core/app_theme.dart';
 
 /// "Masih ada Abang Polis?" Two big buttons, gone after 10 seconds.
@@ -31,9 +32,11 @@ class VotePrompt extends ConsumerWidget {
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [
+            ReportBadge(type: report.type, size: 36),
+            const SizedBox(width: 10),
             Expanded(
               child: Text(
-                '${report.type.emoji} Masih ada ${report.type.label}?',
+                'Masih ada ${report.type.label}?',
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               ),
             ),
