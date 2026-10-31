@@ -84,6 +84,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
   LatLng? _here; // smoothed, road-snapped position, updated once per GPS fix
   double _speedMps = 0;
   double _accuracyM = 10; // how far off the position could be (shown as a circle when not navigating)
+  double? _travelHeading; // direction of travel, from the last time the car was clearly moving
 
   final _stats = TripStats(); // arrival summary, on this phone only
   final _jam = JamDetector();
@@ -253,15 +254,19 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
     if (filtered == null) return; // junk fix, ignore it
 
     final routing = ref.read(routingProvider.notifier);
-    // The heading is only trusted while clearly moving; standing still, GPS heading is noise.
-    final heading = filtered.speedMps > 3 ? filtered.headingDeg : null;
+    // GPS heading is only trusted while clearly moving. Crawling or stopped it is noise, but the car
+    // still faces the way it was going, so keep that: it stops a slow car near a U-turn or a loop
+    // round the block from being matched to the stretch of route going the other way.
+    if (filtered.speedMps > 2) _travelHeading = filtered.headingDeg;
+    final heading = _travelHeading;
     routing.onPosition(filtered.position, headingDeg: heading);
     final snap = routing.snap(filtered.position, headingDeg: heading);
     final at = snap?.point ?? filtered.position;
 
-    // While navigating the car glides along the road itself, so it follows bends between fixes.
+    // During the trip (and while parking after arriving) the car glides along the road itself, so it
+    // follows bends between fixes and does not wobble with the GPS.
     final nav = ref.read(routingProvider);
-    final plan = nav.navigating ? nav.plan : null;
+    final plan = nav.navigating || nav.arrived ? nav.plan : null;
     _motion.setRoute(plan?.shape, plan?.cumulativeM);
     _motion.onFix(
       at,
@@ -504,6 +509,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
       if (prev == true && !now) {
         _stats.begin(DateTime.now());
         _jam.reset();
+        _travelHeading = null; // learnt again from this trip's first moving fixes
       }
       final here = _here;
       if (prev == true && !now && here != null) {
@@ -609,15 +615,28 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
                 ),
               // Driving: only the road still ahead, starting exactly at the car. Redrawn every frame
               // with the gliding car, so no stretch of line is left behind it between GPS fixes.
-              if (nav.plan != null && !nav.previewing)
+              // Off the route, the blue line starts on the route itself and a dotted line shows the
+              // way back to it (never a solid line straight through the houses).
+              if (nav.plan != null && !nav.previewing && !nav.arrived)
                 ValueListenableBuilder<CarPose?>(
                   valueListenable: _pose,
                   builder: (context, pose, _) {
                     final plan = nav.plan!;
                     final along = pose?.alongM;
-                    final points = (pose != null && along != null && identical(_motion.route, plan.shape))
+                    final onRoad = pose != null && along != null && identical(_motion.route, plan.shape);
+                    final car = pose?.position ?? here;
+                    final join = car == null ? null : closestOnSegment(plan.shape, nav.segment, car);
+                    final points = onRoad
                         ? remainingFromDistance(plan, along, from: pose.position)
-                        : remainingShape(plan.shape, nav.segment, from: pose?.position ?? here);
+                        : remainingShape(plan.shape, nav.segment, from: join);
+                    final toRoute = !onRoad && car != null && join != null && haversineM(car, join) > 8
+                        ? Polyline(
+                            points: [car, join],
+                            strokeWidth: 5,
+                            color: AppColors.route.withValues(alpha: 0.85),
+                            pattern: const StrokePattern.dotted(),
+                          )
+                        : null;
                     // Slow parts ahead, painted over the blue line (never behind the car).
                     final from = along ?? (plan.totalM - nav.remainingM);
                     final traffic = [
@@ -630,7 +649,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
                           ),
                     ];
                     return PolylineLayer(
-                      polylines: [if (points.length >= 2) _routeLine(points), ...traffic],
+                      polylines: [if (toRoute != null) toRoute, if (points.length >= 2) _routeLine(points), ...traffic],
                     );
                   },
                 ),

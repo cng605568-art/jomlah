@@ -105,10 +105,13 @@ class CarMotion {
     } else {
       _onRoute = false;
       _fixPos = position;
+      // Crawling or standing still (parking), GPS heading is noise: keep facing the same way and do
+      // not coast off in a random direction.
+      final moving = speed >= 1.0;
       final h = headingDeg * math.pi / 180;
-      _ve = speed * math.sin(h);
-      _vn = speed * math.cos(h);
-      _targetHeading = headingDeg;
+      _ve = moving ? speed * math.sin(h) : 0;
+      _vn = moving ? speed * math.cos(h) : 0;
+      if (speed >= 1.5 || _shown == null) _targetHeading = headingDeg;
     }
     _speed = speed;
     _fixAt = now;

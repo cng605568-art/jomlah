@@ -93,18 +93,37 @@ class NavState {
 class RoutingNotifier extends Notifier<NavState> {
   static const _offRouteThresholdM = 60.0;
   static const _rerouteCooldown = Duration(seconds: 10); // also keeps us polite to the server
+  static const snapJoinM = 30.0; // the car is drawn on the road once it is this close to the route...
+  static const snapKeepM = 45.0; // ...and stays there until it is further than this (no flicker)
 
-  int _seg = 0; // shape segment we are on; never moves backwards
+  int _seg = 0; // shape segment we are on
+  double _alongM = 0; // metres along the route where we are
+  DateTime? _trackedAt; // when [_alongM] was last worked out; null = no idea yet (look everywhere)
+  int? _pendingJump; // a far-ahead segment seen once; jumping there needs a second fix agreeing
+  ({int seg, double t, double dist})? _lastBest; // what the last fix matched, reused by snap()
+  LatLng? _lastHere;
+  bool _snapped = false;
   double _offRouteM = 0; // distance from the route at the last GPS fix
   LatLng? _origin; // where the trip was planned from
   DateTime _lastReroute = DateTime.fromMillisecondsSinceEpoch(0);
+
+  /// Forget where on the route we are (new route, new trip).
+  void _resetTracking() {
+    _seg = 0;
+    _alongM = 0;
+    _trackedAt = null;
+    _pendingJump = null;
+    _lastBest = null;
+    _lastHere = null;
+    _snapped = false;
+  }
 
   @override
   NavState build() => const NavState();
 
   /// Plans the trip and shows the options. Nothing is spoken until [begin].
   Future<void> start(LatLng from, LatLng to) async {
-    _seg = 0;
+    _resetTracking();
     _offRouteM = 0;
     _origin = from;
     state = NavState(destination: to, loading: true);
@@ -132,7 +151,7 @@ class RoutingNotifier extends Notifier<NavState> {
     final s = state;
     final origin = _origin;
     if (!s.previewing || origin == null || i < 0 || i >= s.candidates.length) return;
-    _seg = 0;
+    _resetTracking();
     state = _track(
       NavState(
         destination: s.destination,
@@ -148,11 +167,12 @@ class RoutingNotifier extends Notifier<NavState> {
   /// "Jom!" Start the trip.
   void begin() {
     if (!state.previewing) return;
+    _resetTracking(); // the first fix of the trip may be anywhere along the route
     state = state.copyWith(previewing: false);
   }
 
   void cancel() {
-    _seg = 0;
+    _resetTracking();
     state = const NavState();
   }
 
@@ -168,16 +188,21 @@ class RoutingNotifier extends Notifier<NavState> {
     }
   }
 
-  /// Pulls [p] onto the route when it is within [maxDistanceM] of it (GPS drifts a few metres, roads do
-  /// not). Returns null when not navigating or when the car is clearly somewhere else.
-  RouteSnap? snap(LatLng p, {double maxDistanceM = 30, double? headingDeg}) {
-    final plan = state.plan;
-    if (!state.navigating || plan == null || plan.shape.length < 2) return null;
+  /// Pulls [p] onto the route when it is close (GPS drifts a few metres, roads do not): within
+  /// [snapJoinM] to get on, and it stays on until [snapKeepM], so a wobbly fix near the edge does not
+  /// make the car flick between the road and the raw GPS spot. Works during the trip and after
+  /// arriving (the car stays on the road while parking). Null when there is no trip or the car is
+  /// clearly somewhere else.
+  RouteSnap? snap(LatLng p, {double? headingDeg}) {
+    final s = state;
+    final plan = s.plan;
+    if (plan == null || s.previewing || s.loading || plan.shape.length < 2) return null;
     final shape = plan.shape;
-    final first = math.min(_seg, shape.length - 2);
-    final last = math.min(shape.length - 2, _seg + 40); // only look just ahead
-    final best = _nearest(shape, p, first, last, headingDeg);
-    if (best.dist > maxDistanceM) return null;
+    final best = identical(p, _lastHere) && _lastBest != null
+        ? _lastBest!
+        : _nearestAlong(plan, p, _alongM - 20, _alongM + 100, headingDeg);
+    _snapped = best.dist <= (_snapped ? snapKeepM : snapJoinM);
+    if (!_snapped) return null;
     final a = shape[best.seg];
     final b = shape[best.seg + 1];
     final cum = plan.cumulativeM;
@@ -216,6 +241,26 @@ class RoutingNotifier extends Notifier<NavState> {
     return best;
   }
 
+  /// Like [_nearest], for the stretch between [fromM] and [toM] metres along the route.
+  ({int seg, double t, double dist}) _nearestAlong(RoutePlan plan, LatLng p, double fromM, double toM, double? headingDeg) {
+    final cum = plan.cumulativeM;
+    final n = plan.shape.length;
+    int segAt(double m) {
+      var lo = 0, hi = n - 2;
+      while (lo < hi) {
+        final mid = (lo + hi + 1) >> 1;
+        if (cum[mid] <= m) {
+          lo = mid;
+        } else {
+          hi = mid - 1;
+        }
+      }
+      return lo;
+    }
+
+    return _nearest(plan.shape, p, segAt(math.max(0.0, fromM)), segAt(math.max(0.0, toM)), headingDeg);
+  }
+
   /// Metres from [p] to the part of the route still ahead of us, or null with no route.
   /// Used to ignore road alerts that are on a parallel street.
   double? distanceFromRoute(LatLng p) {
@@ -242,7 +287,7 @@ class RoutingNotifier extends Notifier<NavState> {
             prefs: ref.read(routePrefsProvider),
           );
       if (state.destination != dest) return; // cancelled while waiting
-      _seg = 0;
+      _resetTracking();
       state = _track(
         NavState(
           destination: dest,
@@ -262,18 +307,48 @@ class RoutingNotifier extends Notifier<NavState> {
     final shape = plan.shape;
     if (shape.length < 2 || plan.maneuvers.isEmpty) return s;
 
-    // Highways have vertices kilometres apart, so measure to segments, not points.
-    final first = math.min(math.max(0, _seg - 3), shape.length - 2);
-    final last = math.min(shape.length - 2, _seg + 400);
-    final best = _nearest(shape, here, first, last, headingDeg);
+    // Follow the route in order: look a little behind where we were and only as far ahead as the
+    // car could have driven since the last fix. Otherwise, crawling near a U-turn or around a block
+    // where the route comes back past itself, a noisy fix could match a later part of the route and
+    // the car would jump there. (Highways have vertices kilometres apart: measure to segments.)
+    final cum = plan.cumulativeM;
+    final now = DateTime.now();
+    final known = _trackedAt;
+    _trackedAt = now;
+    ({int seg, double t, double dist}) best;
+    var offRoute = 0.0;
+    if (known == null) {
+      best = _nearestAlong(plan, here, 0, plan.totalM, headingDeg);
+      offRoute = best.dist;
+      _pendingJump = null;
+    } else {
+      final dt = (now.difference(known).inMilliseconds / 1000).clamp(0.2, 120.0);
+      best = _nearestAlong(plan, here, _alongM - 20, _alongM + 50 + 45 * dt, headingDeg);
+      offRoute = best.dist;
+      if (best.dist > snapJoinM) {
+        // Not near where we expected. Further ahead (a shortcut, or GPS was lost for a while)?
+        final far = _nearestAlong(plan, here, _alongM - 20, _alongM + 5000, headingDeg);
+        offRoute = math.min(offRoute, far.dist); // still on the route: no reason to reroute
+        if (far.dist <= snapJoinM && _pendingJump != null && (far.seg - _pendingJump!).abs() <= 3) {
+          best = far; // two fixes in a row agree: we really are there
+          _pendingJump = null;
+        } else {
+          _pendingJump = far.dist <= snapJoinM ? far.seg : null;
+        }
+      } else {
+        _pendingJump = null;
+      }
+    }
     final bestSeg = best.seg;
     final bestT = best.t;
     final bestD = best.dist;
     _seg = bestSeg;
-    _offRouteM = bestD;
+    _offRouteM = offRoute;
+    _lastBest = best;
+    _lastHere = here;
 
-    final cum = plan.cumulativeM;
     final along = cum[bestSeg] + bestT * (cum[bestSeg + 1] - cum[bestSeg]);
+    _alongM = along;
     final remaining = math.max(0.0, plan.totalM - along);
     final next = plan.maneuvers.firstWhere(
       (m) => m.beginIndex > bestSeg,
@@ -286,7 +361,7 @@ class RoutingNotifier extends Notifier<NavState> {
       next: next,
       distanceToNextM: math.max(0.0, nextAt - along),
       remainingM: remaining,
-      arrived: !s.previewing && remaining < 30 && bestD < _offRouteThresholdM,
+      arrived: s.arrived || (!s.previewing && remaining < 30 && bestD < _offRouteThresholdM),
     );
   }
 }

@@ -159,6 +159,19 @@ List<LatLng> remainingShape(List<LatLng> shape, int segment, {LatLng? from}) {
   return [if (from != null) from, ...shape.sublist(start)];
 }
 
+/// The point of segment [seg] of [shape] (from point seg to seg+1) closest to [p].
+LatLng closestOnSegment(List<LatLng> shape, int seg, LatLng p) {
+  if (shape.length < 2) return shape.isEmpty ? p : shape.first;
+  final i = math.min(math.max(seg, 0), shape.length - 2);
+  final a = shape[i], b = shape[i + 1];
+  final cosLat = math.cos(p.latitude * math.pi / 180);
+  final ax = (a.longitude - p.longitude) * cosLat, ay = a.latitude - p.latitude;
+  final dx = (b.longitude - a.longitude) * cosLat, dy = b.latitude - a.latitude;
+  final len2 = dx * dx + dy * dy;
+  final t = len2 == 0 ? 0.0 : math.min(1.0, math.max(0.0, (-ax * dx - ay * dy) / len2));
+  return LatLng(a.latitude + t * (b.latitude - a.latitude), a.longitude + t * (b.longitude - a.longitude));
+}
+
 /// The part of [plan] still ahead of the point [alongM] metres from the start, beginning at [from]
 /// (where the car is drawn). Used every frame while driving, so it finds its place by halving.
 List<LatLng> remainingFromDistance(RoutePlan plan, double alongM, {required LatLng from}) {

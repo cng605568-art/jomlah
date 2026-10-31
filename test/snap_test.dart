@@ -137,4 +137,108 @@ void main() {
     expect(snap.point.longitude, closeTo(origin.longitude, 1e-6));
     expect(snap.alongM, closeTo(150, 1.5));
   });
+
+  group('following the car along the route', () {
+    Maneuver man(int type, int begin, int end) =>
+        Maneuver(type: type, instruction: '', lengthKm: 0, beginIndex: begin, endIndex: end, streetNames: const []);
+    RoutePlan planOf(List<LatLng> shape, List<Maneuver> maneuvers) {
+      var m = 0.0;
+      for (var i = 1; i < shape.length; i++) {
+        m += haversineM(shape[i - 1], shape[i]);
+      }
+      return RoutePlan(shape: shape, maneuvers: maneuvers, distanceKm: m / 1000, durationSec: m / 10);
+    }
+
+    Future<(ProviderContainer, RoutingNotifier)> trip(RoutePlan plan) async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final c = ProviderContainer(overrides: [
+        sharedPrefsProvider.overrideWithValue(prefs),
+        valhallaClientProvider.overrideWithValue(_FakeClient(plan)),
+      ]);
+      addTearDown(c.dispose);
+      final r = c.read(routingProvider.notifier);
+      await r.start(plan.shape.first, plan.shape.last);
+      r.begin();
+      return (c, r);
+    }
+
+    test('crawling next to a U-turn, the car is not pulled onto the way back', () async {
+      // Out 300 m north, U-turn across a 12 m divider, back south.
+      final plan = planOf(
+        [origin, offsetM(origin, 0, 300), offsetM(origin, 12, 300), offsetM(origin, 12, 0)],
+        [man(1, 0, 1), man(12, 1, 3), man(4, 3, 3)],
+      );
+      final (c, routing) = await trip(plan);
+      routing.onPosition(offsetM(origin, 2, 100), headingDeg: 0);
+      // Now crawling with no heading, and GPS drifts towards the way back: 4 m from it, 8 m from ours.
+      for (var i = 0; i < 6; i++) {
+        final p = offsetM(origin, 8, 102.0 + i);
+        routing.onPosition(p);
+        final snap = routing.snap(p)!;
+        expect(snap.alongM, closeTo(102.0 + i, 2));
+        expect(snap.point.longitude, closeTo(origin.longitude, 1e-6)); // still on the way out
+      }
+      expect(c.read(routingProvider).next!.type, 12); // the U-turn is still ahead
+    });
+
+    test('a wobbly fix near the edge does not make the car flick on and off the road', () async {
+      final plan = planOf([origin, offsetM(origin, 0, 1000)], [man(1, 0, 1), man(4, 1, 1)]);
+      final (_, routing) = await trip(plan);
+      RouteSnap? at(double east, double north) {
+        final p = offsetM(origin, east, north);
+        routing.onPosition(p);
+        return routing.snap(p);
+      }
+
+      expect(at(5, 100), isNotNull);
+      expect(at(38, 110), isNotNull); // a bit far, but it was on the road: stays on
+      expect(at(50, 120), isNull); // clearly off
+      expect(at(38, 130), isNull); // must come properly close again to get back on
+      expect(at(20, 140), isNotNull);
+    });
+
+    test('one stray fix near a later part of the route does not jump the car there', () async {
+      // Round the block: 300 m north, 100 m east, back 300 m south.
+      final plan = planOf(
+        [origin, offsetM(origin, 0, 300), offsetM(origin, 100, 300), offsetM(origin, 100, 0)],
+        [man(1, 0, 1), man(10, 1, 2), man(10, 2, 3), man(4, 3, 3)],
+      );
+      final (c, routing) = await trip(plan);
+      routing.onPosition(offsetM(origin, 1, 50));
+      final stray = offsetM(origin, 95, 60); // 5 m from the way back, 95 m from where we are
+      routing.onPosition(stray);
+      expect(routing.snap(stray), isNull); // not drawn on the far part of the route
+      expect(c.read(routingProvider).segment, 0);
+      routing.onPosition(offsetM(origin, 1, 62));
+      expect(c.read(routingProvider).segment, 0);
+      expect(c.read(routingProvider).remainingM, closeTo(700 - 62, 3));
+
+      // Two fixes in a row there: we really did take a shortcut, so follow.
+      routing.onPosition(offsetM(origin, 95, 60));
+      routing.onPosition(offsetM(origin, 95, 58));
+      expect(c.read(routingProvider).segment, 2);
+      expect(c.read(routingProvider).remainingM, closeTo(58, 3));
+    });
+
+    test('after arriving, the car stays on the road while parking', () async {
+      final plan = planOf([origin, offsetM(origin, 0, 1000)], [man(1, 0, 1), man(4, 1, 1)]);
+      final (c, routing) = await trip(plan);
+      for (final m in [900.0, 950.0, 985.0]) {
+        routing.onPosition(offsetM(origin, 2, m), headingDeg: 0);
+      }
+      expect(c.read(routingProvider).arrived, isTrue);
+      final p = offsetM(origin, 7, 996);
+      final snap = routing.snap(p);
+      expect(snap, isNotNull);
+      expect(snap!.point.longitude, closeTo(origin.longitude, 1e-6));
+    });
+
+    test('off the route, the line back starts at the nearest point of the route', () {
+      final shape = [origin, offsetM(origin, 0, 1000)];
+      final p = closestOnSegment(shape, 0, offsetM(origin, 40, 300));
+      expect(haversineM(p, offsetM(origin, 0, 300)), lessThan(0.5));
+      expect(closestOnSegment(shape, 0, offsetM(origin, 5, -50)), shape.first); // before the start
+    });
+  });
 }
