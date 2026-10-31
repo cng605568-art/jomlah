@@ -170,9 +170,12 @@ const kSimSpeedKey = 'sim.kmh';
 /// Bottom of the screen once a destination is picked: route choices before "Jom!", the trip bar
 /// while driving, nothing otherwise.
 class NavBottomArea extends ConsumerWidget {
-  const NavBottomArea({super.key, required this.onReport, this.onSimulate});
+  const NavBottomArea({super.key, required this.onReport, this.onSimulate, this.onVoice});
 
   final VoidCallback onReport;
+
+  /// When set, the trip bar has a microphone for voice reports.
+  final VoidCallback? onVoice;
 
   /// When set, the route choice offers a pretend drive at the chosen speed in km/h.
   final void Function(double kmh)? onSimulate;
@@ -234,6 +237,7 @@ class NavBottomArea extends ConsumerWidget {
         minutes: minutes,
         detail: nav.rerouting ? s.recalculating : '${formatDistance(nav.remainingM)} · ${s.arriveAt(arrive)}',
         onReport: onReport,
+        onVoice: onVoice,
         onEnd: notifier.cancel,
       );
     }

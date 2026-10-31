@@ -104,6 +104,15 @@ class VoiceEngine {
   /// Over the speed limit. Same low priority as road alerts, so it never talks over a turn.
   bool speeding(int limitKph) => _say(Cue.speeding, limit: '$limitKph', priority: 1);
 
+  /// Says a short sentence in [locale] (a spoken "reported" after a voice report). Like a turn
+  /// instruction, it is not cut off by road alerts. Silent when muted.
+  bool say(String text, String locale) {
+    if (settings().muted) return false;
+    _currentPriority = 3;
+    _speakIn(locale, text);
+    return true;
+  }
+
   /// Plays a sample in the current voice (used by the picker).
   void preview() => _say(Cue.police, distM: 300, priority: 3);
 
@@ -143,10 +152,12 @@ class VoiceEngine {
     return true;
   }
 
-  Future<void> _speak(VoicePack pack, String text) async {
-    if (_locale != pack.locale) {
-      _locale = pack.locale;
-      await speaker.setLocale(pack.locale);
+  Future<void> _speak(VoicePack pack, String text) => _speakIn(pack.locale, text);
+
+  Future<void> _speakIn(String locale, String text) async {
+    if (_locale != locale) {
+      _locale = locale;
+      await speaker.setLocale(locale);
     }
     await speaker.speak(text);
   }

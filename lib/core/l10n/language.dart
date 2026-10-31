@@ -18,6 +18,13 @@ enum AppLanguage {
 
   Locale get locale => Locale(code);
 
+  /// The phone's text-to-speech language for short spoken confirmations in this language.
+  String get ttsLocale => switch (this) {
+        AppLanguage.ms => 'ms-MY',
+        AppLanguage.en => 'en-GB',
+        AppLanguage.zh => 'zh-CN',
+      };
+
   static AppLanguage? fromCode(String? code) {
     for (final l in values) {
       if (l.code == code) return l;

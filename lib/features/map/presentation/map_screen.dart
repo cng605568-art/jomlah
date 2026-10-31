@@ -24,6 +24,7 @@ import '../../voice/domain/voice_pack.dart';
 import '../../search/presentation/search_box.dart';
 import '../../settings/presentation/settings_button.dart';
 import '../../voice/application/voice_providers.dart';
+import '../../voice/presentation/voice_report_sheet.dart';
 import '../application/map_style_provider.dart';
 import '../application/providers.dart';
 import '../application/traffic_providers.dart';
@@ -689,7 +690,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
               left: 0,
               right: 0,
               bottom: 0,
-              child: NavBottomArea(onReport: _openReportSheet, onSimulate: _startSimulation),
+              child: NavBottomArea(onReport: _openReportSheet, onSimulate: _startSimulation, onVoice: _openVoiceReport),
             ),
           // Map credit, required by OpenStreetMap: kept clear of the panels and buttons.
           Positioned(
@@ -739,12 +740,40 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
       );
       return;
     }
-    showReportSheet(context, onPick: (type) {
+    showReportSheet(context, onVoice: _openVoiceReport, onPick: (type) {
       final at = _here;
       if (at == null || ref.read(reportsProvider).submitting) return;
       HapticFeedback.mediumImpact();
       ref.read(reportsProvider.notifier).report(type, at);
     });
+  }
+
+  /// The microphone: say what you see ("ada polis"), and it is reported where you are, with a spoken
+  /// confirmation so eyes can stay on the road.
+  Future<void> _openVoiceReport() async {
+    if (_here == null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.s.waitForGps)));
+      return;
+    }
+    await ref.read(speakerProvider).stop(); // the voice must not talk over the microphone
+    if (!mounted) return;
+    final result = await showVoiceReport(context);
+    if (!mounted || result == null) return;
+    if (result.pick) {
+      _openReportSheet();
+      return;
+    }
+    final type = result.type;
+    final at = _here;
+    if (type == null || at == null || ref.read(reportsProvider).submitting) return;
+    HapticFeedback.mediumImpact();
+    ref.read(reportsProvider.notifier).report(type, at);
+    final s = context.s;
+    final label = s.reportLabel(type);
+    ref.read(voiceEngineProvider).say(
+          _sim != null ? s.practiceReported(label) : s.reported(label),
+          ref.read(languageProvider).ttsLocale,
+        );
   }
 }
 

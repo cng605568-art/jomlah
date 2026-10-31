@@ -154,6 +154,24 @@ class AppStrings {
   String get yesStillThere => _t(('Ada', 'Yes', '还在'));
   String get gone => _t(('Tak ada', 'Gone', '没了'));
 
+  // ---- Voice reports ----
+  String get voiceReport => _t(('Lapor dengan suara', 'Report by voice', '语音报告'));
+  String get speak => _t(('Cakap', 'Speak', '说话'));
+  String get speakNow => _t(('Cakap sekarang…', 'Speak now…', '请说话…'));
+  String get voiceExamples => _t((
+        'Contoh: "ada polis", "banjir", "jem teruk", "kemalangan"',
+        'For example: "police", "flood", "bad jam", "accident"',
+        '例如：“警察”、“水灾”、“塞车”、“车祸”',
+      ));
+  String get notUnderstood =>
+      _t(('Tak faham. Cuba lagi, atau pilih sendiri.', "Didn't catch that. Try again, or pick one.", '没听清楚。再试一次，或自己选择。'));
+  String get pickInstead => _t(('Pilih sendiri', 'Pick one', '自己选'));
+  String get speechUnavailable => _t((
+        'Pengecaman suara tak dapat digunakan. Benarkan mikrofon untuk Jomlah, atau pasang aplikasi Google.',
+        'Speech recognition is not available. Allow the microphone for Jomlah, or install the Google app.',
+        '无法使用语音识别。请允许 Jomlah 使用麦克风，或安装 Google 应用。',
+      ));
+
   // ---- Live traffic ----
   String get liveTraffic => _t(('Trafik langsung', 'Live traffic', '实时路况'));
   String get shareTraffic => _t(('Kongsi kelajuan tanpa nama', 'Share my speed anonymously', '匿名分享车速'));

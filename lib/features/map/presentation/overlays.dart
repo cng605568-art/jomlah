@@ -213,15 +213,30 @@ class ReportBadge extends StatelessWidget {
 
 /// The grid of things to report, shown in a sheet from the orange button.
 class ReportGrid extends StatelessWidget {
-  const ReportGrid({super.key, required this.onPick});
+  const ReportGrid({super.key, required this.onPick, this.onVoice});
   final void Function(ReportType type) onPick;
+
+  /// When set, a "Cakap" button to report by voice instead.
+  final VoidCallback? onVoice;
 
   @override
   Widget build(BuildContext context) => Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(context.s.whatDoYouSee, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+          Row(
+            children: [
+              Expanded(
+                child: Text(context.s.whatDoYouSee, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+              ),
+              if (onVoice != null)
+                FilledButton.tonalIcon(
+                  onPressed: onVoice,
+                  icon: const Icon(Icons.mic_rounded),
+                  label: Text(context.s.speak),
+                ),
+            ],
+          ),
           const SizedBox(height: 14),
           GridView.count(
             crossAxisCount: 3,
@@ -260,7 +275,11 @@ class ReportGrid extends StatelessWidget {
 }
 
 /// Opens [ReportGrid] in a bottom sheet; [onPick] runs after the sheet closes.
-Future<void> showReportSheet(BuildContext context, {required void Function(ReportType type) onPick}) =>
+Future<void> showReportSheet(
+  BuildContext context, {
+  required void Function(ReportType type) onPick,
+  VoidCallback? onVoice,
+}) =>
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -272,6 +291,12 @@ Future<void> showReportSheet(BuildContext context, {required void Function(Repor
               Navigator.pop(sheetContext);
               onPick(t);
             },
+            onVoice: onVoice == null
+                ? null
+                : () {
+                    Navigator.pop(sheetContext);
+                    onVoice();
+                  },
           ),
         ),
       ),
@@ -680,12 +705,16 @@ class TripBar extends StatelessWidget {
     required this.detail,
     required this.onReport,
     required this.onEnd,
+    this.onVoice,
   });
 
   final int minutes;
   final String detail; // "4.3 km · tiba 21:52"
   final VoidCallback onReport;
   final VoidCallback onEnd;
+
+  /// When set, a microphone button: say what you see instead of picking it.
+  final VoidCallback? onVoice;
 
   /// Height of the bar above the phone's own bottom inset, for placing things just above it.
   static const height = 88.0;
@@ -713,6 +742,10 @@ class TripBar extends StatelessWidget {
                   ],
                 ),
               ),
+              if (onVoice != null) ...[
+                MapButton(icon: Icons.mic_rounded, onPressed: onVoice!, tooltip: context.s.voiceReport, size: 56),
+                const SizedBox(width: 10),
+              ],
               ReportButton(onPressed: onReport, size: 56, radius: 20, glow: false),
               const SizedBox(width: 10),
               Tooltip(
