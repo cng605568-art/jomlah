@@ -30,7 +30,12 @@ class AppColors {
   static const destination = Color(0xFFF43F5E);
 }
 
-ThemeData buildAppTheme() {
+/// [fontFallback] is only for the UI preview pictures: phones find Chinese characters in their own
+/// fonts, the test machine needs one named.
+ThemeData buildAppTheme({List<String>? fontFallback}) {
+  // Every text in the app uses Plus Jakarta Sans (Chinese characters come from the phone's font).
+  TextStyle font(TextStyle s) => s.copyWith(fontFamily: 'PlusJakartaSans', fontFamilyFallback: fontFallback);
+
   final scheme = ColorScheme.fromSeed(
     seedColor: AppColors.primary,
     brightness: Brightness.dark,
@@ -60,6 +65,7 @@ ThemeData buildAppTheme() {
   return ThemeData(
     useMaterial3: true,
     fontFamily: 'PlusJakartaSans',
+    fontFamilyFallback: fontFallback,
     colorScheme: scheme,
     scaffoldBackgroundColor: AppColors.navy,
     canvasColor: AppColors.surface,
@@ -69,9 +75,9 @@ ThemeData buildAppTheme() {
       dragHandleColor: AppColors.outline,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
     ),
-    snackBarTheme: const SnackBarThemeData(
+    snackBarTheme: SnackBarThemeData(
       backgroundColor: AppColors.raised,
-      contentTextStyle: TextStyle(color: Colors.white),
+      contentTextStyle: font(const TextStyle(color: Colors.white)),
       behavior: SnackBarBehavior.floating,
     ),
     floatingActionButtonTheme: const FloatingActionButtonThemeData(
@@ -81,20 +87,20 @@ ThemeData buildAppTheme() {
     popupMenuTheme: const PopupMenuThemeData(color: AppColors.raised),
     dividerTheme: const DividerThemeData(color: AppColors.outline),
     progressIndicatorTheme: const ProgressIndicatorThemeData(color: AppColors.sky),
-    chipTheme: const ChipThemeData(
+    chipTheme: ChipThemeData(
       backgroundColor: AppColors.raised,
       selectedColor: AppColors.primaryDeep,
       checkmarkColor: Colors.white,
-      labelStyle: TextStyle(color: Colors.white),
+      labelStyle: font(const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
       side: BorderSide.none,
-      shape: StadiumBorder(),
+      shape: const StadiumBorder(),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         shape: rounded,
-        textStyle: const TextStyle(fontFamily: 'PlusJakartaSans', fontWeight: FontWeight.w700),
+        textStyle: font(const TextStyle(fontWeight: FontWeight.w700)),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
@@ -102,7 +108,7 @@ ThemeData buildAppTheme() {
         foregroundColor: Colors.white,
         side: const BorderSide(color: AppColors.outline, width: 1.5),
         shape: rounded,
-        textStyle: const TextStyle(fontFamily: 'PlusJakartaSans', fontWeight: FontWeight.w700),
+        textStyle: font(const TextStyle(fontWeight: FontWeight.w700)),
       ),
     ),
     textButtonTheme: TextButtonThemeData(

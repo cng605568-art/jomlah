@@ -1,11 +1,12 @@
 # Jomlah 🚗
 
-**A free navigation app built in Malaysia, now in beta.** Turn-by-turn routes for cars and
-motorcycles, route options, three voice packs (Mamak Boss, Sarcastic KL-ite, or Serious), driver
-alerts for police, floods, potholes and more, and saved Home and Work shortcuts.
-No account. No ads.
+**A free navigation app built in Malaysia, now in beta.** In Bahasa Melayu, English and 中文.
+Turn-by-turn routes for cars and motorcycles, route options, five voices (Mamak Boss, Sarcastic
+KL-ite, Serious, and two in Mandarin: 热心老友 and 华语 · 简洁), driver alerts for police, floods,
+potholes and more, and saved Home and Work shortcuts. No account. No ads.
 
 *Aplikasi navigasi percuma buatan Malaysia. Versi beta. Tiada akaun, tiada iklan.*
+*马来西亚制造的免费导航应用。测试版。不需要账号，没有广告。*
 
 ## About
 
@@ -55,7 +56,11 @@ sit with them for the five steps. Only install apps from links you trust.
 - A car that glides along the road itself between GPS readings, following bends and turning with
   the road, with brake lights when you slow down; a circle shows how sure the GPS is while you browse
 - The map turns with your direction while you drive, with the road ahead in view (switch to north-up in Settings)
-- Spoken directions in three voices (install your phone's Malay text-to-speech voice for Mamak Boss)
+- The whole app in Bahasa Melayu, English or 中文 (Settings > Bahasa / Language / 语言, or on the
+  first screen). A phone set to Chinese starts in Chinese; everyone else starts in Malay
+- Spoken directions in five voices: three in Malay and English, two in Mandarin. Changing the app's
+  language switches to a voice in that language (you can still pick any voice). Voices use your
+  phone's text-to-speech: install the Malay or Chinese voice there if one stays silent
 - Keeps navigating with the screen off or another app open (Android shows a "navigation active"
   notification; on Android 13 and newer, allow notifications so you can see it)
 - Report buttons and a "Masih ada?" prompt when you pass an alert

@@ -277,6 +277,27 @@ and line. It does not build an APK; `main` still runs the full build, tests incl
 - Widget tests for the trip screens (`test/nav_flow_test.dart`), and the Checks workflow now shows a
   failing widget test's printed exception in its annotation.
 
+## Step 16: languages (Bahasa Melayu, English, 中文)
+- `lib/core/l10n/strings.dart` holds every text the app shows, each as a record of three strings:
+  `_t(('Nak ke mana?', 'Where to?', '要去哪里？'))`, in (ms, en, zh) order. A missing language does
+  not compile. `{name}` placeholders are filled by small methods (`s.minutes(12)`).
+- `lib/core/l10n/language.dart`: `AppLanguage`, `languageProvider` (saved under `app.language`; the
+  first run follows the phone: Chinese phones get Chinese, others Malay), `stringsProvider` for
+  notifiers, and `StringsScope` (put in `MaterialApp.builder`) so widgets use `context.s`. Without a
+  scope (plain widget tests) texts are Malay, so older tests keep working.
+- `MaterialApp.locale` and `flutter_localizations` translate Flutter's own texts and make Chinese
+  characters use Chinese (not Japanese) shapes.
+- Route errors are codes (`RouteError`); the screen words them. Unnamed roads get the turn itself as
+  the turn card title (`s.maneuver(type)`) instead of Valhalla's English instruction.
+- `chooseLanguage` (settings/application) sets the language and switches the voice to that
+  language's default (`defaultVoiceFor`) unless the current voice already speaks it.
+- Mandarin voices `kZhFriend` (default for Chinese) and `kZhPlain` use TTS locale `zh-CN`,
+  `exitWord: '出口'`, `米`/`公里`, and Malaysian words (罗里, 路洞, 水灾, 塞车).
+- Previews: the UI preview workflow downloads Noto Sans SC (OFL) because the test machine has no
+  Chinese font; `buildAppTheme(fontFallback: ...)` passes it in. Phones use their own.
+- To add a language (Tamil, say): add it to `AppLanguage`, add a fourth string to every record in
+  strings.dart (the compiler lists them), add voices for it and a `defaultVoiceFor` case.
+
 ## Publishing a release
 - Write `release-notes/<tag>.md` (first line `# Title`, then the notes) and commit it to `main`.
 - Then on GitHub: Releases > Draft a new release > type the tag (e.g. `v1.0.4(BETA)`), "Create new tag

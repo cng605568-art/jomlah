@@ -47,10 +47,9 @@ Future<void> _loadFonts() async {
 
 /// The app's theme and language setup, as in main.dart, plus the Chinese test font as a fallback.
 Widget _app(Widget home, {AppLanguage lang = AppLanguage.ms}) {
-  final theme = buildAppTheme();
   return MaterialApp(
     debugShowCheckedModeBanner: false,
-    theme: theme.copyWith(textTheme: theme.textTheme.apply(fontFamilyFallback: const ['NotoSansSC'])),
+    theme: buildAppTheme(fontFallback: const ['NotoSansSC']),
     locale: lang.locale,
     supportedLocales: [for (final l in AppLanguage.values) l.locale],
     localizationsDelegates: GlobalMaterialLocalizations.delegates,
