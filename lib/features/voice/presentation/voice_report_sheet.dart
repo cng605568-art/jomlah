@@ -18,6 +18,7 @@ typedef VoiceReportResult = ({ReportType? type, bool pick});
 Future<VoiceReportResult?> showVoiceReport(BuildContext context) => showModalBottomSheet<VoiceReportResult>(
       context: context,
       showDragHandle: true,
+      isScrollControlled: true, // as tall as its content needs, on any screen
       builder: (_) => const VoiceReportSheet(),
     );
 
@@ -97,7 +98,7 @@ class _VoiceReportSheetState extends ConsumerState<VoiceReportSheet> {
     final s = context.s;
     final listening = _stage == _Stage.listening || _stage == _Stage.starting;
     return SafeArea(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
