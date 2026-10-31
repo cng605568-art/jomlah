@@ -4,6 +4,7 @@ import '../../search/application/places_provider.dart';
 import '../../search/domain/place.dart';
 import '../domain/trip_stats.dart';
 import '../../../core/app_theme.dart';
+import '../../../core/l10n/language.dart';
 
 /// Shown when you arrive: how the trip went, and a shortcut to save the place.
 Future<void> showArrivalSheet(
@@ -16,14 +17,16 @@ Future<void> showArrivalSheet(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (sheetContext) => SafeArea(
+    builder: (sheetContext) {
+      final s = sheetContext.s;
+      return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Sampai! 🎉', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
+            Text(s.arrived, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
             if (place != null)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
@@ -32,15 +35,15 @@ Future<void> showArrivalSheet(
             const SizedBox(height: 16),
             Row(
               children: [
-                Expanded(child: _Stat('Jarak', '${summary.distanceKm.toStringAsFixed(1)} km')),
-                Expanded(child: _Stat('Masa', formatDuration(summary.duration))),
+                Expanded(child: _Stat(s.distance, '${summary.distanceKm.toStringAsFixed(1)} km')),
+                Expanded(child: _Stat(s.time, s.duration(summary.duration))),
               ],
             ),
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(child: _Stat('Purata', '${summary.avgKmh.round()} km/j')),
-                Expanded(child: _Stat('Laju maksimum', '${summary.maxKmh.round()} km/j')),
+                Expanded(child: _Stat(s.average, '${summary.avgKmh.round()} ${s.kmh}')),
+                Expanded(child: _Stat(s.topSpeed, '${summary.maxKmh.round()} ${s.kmh}')),
               ],
             ),
             if (place != null) ...[
@@ -50,7 +53,7 @@ Future<void> showArrivalSheet(
                 children: [
                   ActionChip(
                     avatar: const Icon(Icons.home_outlined, size: 18),
-                    label: const Text('Simpan sebagai Rumah'),
+                    label: Text(s.saveAsHome),
                     onPressed: () {
                       ref.read(placesProvider.notifier).setHome(place);
                       Navigator.pop(sheetContext);
@@ -58,7 +61,7 @@ Future<void> showArrivalSheet(
                   ),
                   ActionChip(
                     avatar: const Icon(Icons.work_outline, size: 18),
-                    label: const Text('Simpan sebagai Pejabat'),
+                    label: Text(s.saveAsWork),
                     onPressed: () {
                       ref.read(placesProvider.notifier).setWork(place);
                       Navigator.pop(sheetContext);
@@ -73,13 +76,14 @@ Future<void> showArrivalSheet(
               height: 52,
               child: FilledButton(
                 onPressed: () => Navigator.pop(sheetContext),
-                child: const Text('Selesai', style: TextStyle(fontSize: 18)),
+                child: Text(s.done, style: const TextStyle(fontSize: 18)),
               ),
             ),
           ],
         ),
       ),
-    ),
+    );
+    },
   );
 }
 

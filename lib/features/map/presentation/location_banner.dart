@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import '../application/providers.dart';
 import '../../../core/app_theme.dart';
+import '../../../core/l10n/language.dart';
 
 /// Appears only when GPS is off or permission was refused, with a way to fix it.
 class LocationBanner extends ConsumerWidget {
@@ -32,11 +33,7 @@ class LocationBanner extends ConsumerWidget {
                   const Icon(Icons.location_off, color: AppColors.warning),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text(
-                      serviceOff
-                          ? 'GPS dimatikan. Hidupkan lokasi supaya Jomlah boleh tunjuk jalan.'
-                          : 'Jomlah perlukan kebenaran lokasi untuk tunjuk jalan.',
-                    ),
+                    child: Text(serviceOff ? context.s.gpsOff : context.s.needLocationPermission),
                   ),
                 ],
               ),
@@ -47,12 +44,12 @@ class LocationBanner extends ConsumerWidget {
                     onPressed: () => serviceOff
                         ? Geolocator.openLocationSettings()
                         : Geolocator.openAppSettings(),
-                    child: const Text('Buka tetapan'),
+                    child: Text(context.s.openSettings),
                   ),
                   const SizedBox(width: 8),
                   TextButton(
                     onPressed: () => ref.invalidate(locationProvider),
-                    child: const Text('Cuba lagi'),
+                    child: Text(context.s.tryAgain),
                   ),
                 ],
               ),
@@ -80,22 +77,17 @@ class StaleGpsBanner extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.gps_not_fixed, color: AppColors.warning),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'Lokasi tak dikemas kini. Cari tempat terbuka. Kalau berterusan: '
-                        'Tetapan > Bateri > Jomlah > Tiada had, dan benarkan notifikasi.',
-                      ),
-                    ),
+                    const Icon(Icons.gps_not_fixed, color: AppColors.warning),
+                    const SizedBox(width: 10),
+                    Expanded(child: Text(context.s.gpsStale)),
                   ],
                 ),
                 const SizedBox(height: 8),
                 FilledButton(
                   onPressed: Geolocator.openAppSettings,
-                  child: const Text('Buka tetapan app'),
+                  child: Text(context.s.openAppSettings),
                 ),
               ],
             ),

@@ -32,7 +32,7 @@ class HttpReportRepository implements ReportRepository {
           body: jsonEncode({'type': type.name, 'lat': at.latitude, 'lng': at.longitude}),
         ));
     if (res.statusCode == 429) {
-      throw ReportException('Banyak sangat laporan. Tunggu sekejap ya.');
+      throw ReportException('Too many reports (429)', tooMany: true);
     }
     if (res.statusCode != 200 && res.statusCode != 201) {
       throw ReportException('Alamak, laporan tak masuk (${res.statusCode}).');

@@ -1,63 +1,51 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/app_info.dart';
 import '../../../core/app_theme.dart';
+import '../../../core/l10n/language.dart';
+import '../../settings/application/language_choice.dart';
 
-/// Shown once, before the first location permission prompt.
-class OnboardingScreen extends StatelessWidget {
+/// Shown once, before the first location permission prompt. The language comes first, so
+/// everyone can read the rest.
+class OnboardingScreen extends ConsumerWidget {
   const OnboardingScreen({super.key, required this.onDone});
   final VoidCallback onDone;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = context.s;
+    final language = ref.watch(languageProvider);
     return Scaffold(
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Jom! 🚗', style: TextStyle(fontSize: 40, fontWeight: FontWeight.w800)),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final l in AppLanguage.values)
+                    ChoiceChip(
+                      label: Text(l.nativeName),
+                      selected: l == language,
+                      onSelected: (_) => chooseLanguage(ref, l),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Text(s.onboardingTitle, style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w800)),
               const SizedBox(height: 4),
-              const Text('Sebelum gerak, 3 perkara penting.', style: TextStyle(fontSize: 16)),
+              Text(s.onboardingSubtitle, style: const TextStyle(fontSize: 16)),
               const SizedBox(height: 24),
               Expanded(
                 child: ListView(
                   children: [
-                    const _Point(
-                      icon: Icons.phone_android,
-                      title: 'Selamat dulu',
-                      body: 'Letak telefon di pemegang. Jangan menaip semasa memandu. '
-                          'Kalau tak selamat, berhenti dulu.\n'
-                          'Mount your phone, never type while driving, and pull over if '
-                          'it is not safe.',
-                    ),
-                    const _Point(
-                      icon: Icons.gavel,
-                      title: 'Panduan sahaja',
-                      body: 'Ikut papan tanda dan undang-undang jalan raya. Aplikasi ini '
-                          'boleh tersilap, terutama di persimpangan rumit.\n'
-                          'Guidance only. Road signs and the law come first. This beta can '
-                          'be wrong, especially at complex junctions.',
-                    ),
-                    const _Point(
-                      icon: Icons.lock_outline,
-                      title: 'Privasi',
-                      body: 'Tiada akaun. Lokasi digunakan untuk laluan dan amaran sahaja. '
-                          'Semasa navigasi, lokasi dijejak di latar dengan notifikasi. Pelayan peta, '
-                          'carian dan laluan percuma boleh nampak alamat IP dan koordinat yang '
-                          'anda minta. Butiran penuh ada di Tetapan.\n'
-                          'No account. During a trip, location is tracked in the background '
-                          '(with a notification). Free map, search and routing servers can see '
-                          'your IP address and the coordinates you ask for. Details are in Settings.',
-                    ),
-                    if (kDemoMode)
-                      const _Point(
-                        icon: Icons.science_outlined,
-                        title: 'Versi demo',
-                        body: 'Amaran (polis, banjir dll.) dalam versi ini hanyalah contoh dan '
-                            'belum dikongsi antara pengguna.\n'
-                            'Alerts in this build are samples and are not shared between users yet.',
-                      ),
+                    _Point(icon: Icons.phone_android, title: s.safetyTitle, body: s.safetyBody),
+                    _Point(icon: Icons.gavel, title: s.guidanceTitle, body: s.guidanceBody),
+                    _Point(icon: Icons.lock_outline, title: s.privacy, body: s.privacyBody),
+                    if (kDemoMode) _Point(icon: Icons.science_outlined, title: s.demoTitle, body: s.demoBody),
                   ],
                 ),
               ),
@@ -66,7 +54,7 @@ class OnboardingScreen extends StatelessWidget {
                 height: 60,
                 child: FilledButton(
                   onPressed: onDone,
-                  child: const Text('Faham. Jom!', style: TextStyle(fontSize: 18)),
+                  child: Text(s.gotIt, style: const TextStyle(fontSize: 18)),
                 ),
               ),
             ],

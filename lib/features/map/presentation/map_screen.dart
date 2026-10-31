@@ -10,6 +10,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../../core/app_theme.dart';
 import '../../../core/geo.dart';
+import '../../../core/l10n/language.dart';
 import '../../routing/application/routing_providers.dart';
 import '../../routing/application/speed_limit_providers.dart';
 import '../../routing/domain/route_plan.dart';
@@ -321,7 +322,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
     final from = _here ?? (raw == null ? null : LatLng(raw.latitude, raw.longitude));
     if (from == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tunggu GPS dapat lokasi dulu.')),
+        SnackBar(content: Text(context.s.waitForGps)),
       );
       return;
     }
@@ -627,7 +628,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
                   : MapButton(
                       icon: Icons.my_location_rounded,
                       onPressed: () => _recenter(here),
-                      tooltip: 'Lokasi saya',
+                      tooltip: context.s.myLocation,
                     ),
             ),
         ],
@@ -639,7 +640,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
   void _openReportSheet() {
     if (_here == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tunggu GPS dapat lokasi dulu.')),
+        SnackBar(content: Text(context.s.waitForGps)),
       );
       return;
     }
@@ -681,22 +682,22 @@ class _JamPrompt extends StatelessWidget {
             children: [
               const ReportBadge(type: ReportType.jam, size: 36),
               const SizedBox(width: 10),
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'Nampak macam jem. Lapor Jem Teruk?',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  context.s.jamQuestion(context.s.reportLabel(ReportType.jam)),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                 ),
               ),
               FilledButton(
                 style: FilledButton.styleFrom(minimumSize: const Size(72, 56)),
                 onPressed: onReport,
-                child: const Text('Lapor'),
+                child: Text(context.s.report),
               ),
               const SizedBox(width: 8),
               OutlinedButton(
                 style: OutlinedButton.styleFrom(minimumSize: const Size(72, 56)),
                 onPressed: onDismiss,
-                child: const Text('Tak'),
+                child: Text(context.s.no),
               ),
             ],
           ),
@@ -715,9 +716,9 @@ class _SimPill extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: AppColors.cyan, width: 1.5),
         ),
-        child: const Text(
-          '🧪 Simulasi',
-          style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.cyan),
+        child: Text(
+          '🧪 ${context.s.simulate}',
+          style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.cyan),
         ),
       );
 }
@@ -736,14 +737,14 @@ class _BackToCarButton extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(26),
           onTap: onPressed,
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.navigation_rounded, color: Colors.white, size: 20),
-                SizedBox(width: 8),
-                Text('Kembali', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                const Icon(Icons.navigation_rounded, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Text(context.s.backToCar, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
               ],
             ),
           ),

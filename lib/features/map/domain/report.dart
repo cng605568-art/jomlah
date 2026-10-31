@@ -10,7 +10,7 @@ enum ReportType {
   crash('Kemalangan', '💥', Duration(hours: 1));
 
   const ReportType(this.label, this.emoji, this.ttl);
-  final String label;
+  final String label; // the Malay name; screens use AppStrings.reportLabel for the app's language
   final String emoji;
   final Duration ttl; // fallback lifetime; the server's expires_at wins when present
 }

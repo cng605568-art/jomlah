@@ -1,14 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/prefs.dart';
 
-enum NightMode {
-  auto('Auto'),
-  always('Hidup'),
-  never('Mati');
-
-  const NightMode(this.label);
-  final String label;
-}
+/// Shown in Settings as Auto / Hidup / Mati (see AppStrings).
+enum NightMode { auto, always, never }
 
 class NightModeNotifier extends Notifier<NightMode> {
   static const _key = 'map.night';
@@ -28,13 +22,8 @@ class NightModeNotifier extends Notifier<NightMode> {
 final nightModeProvider =
     NotifierProvider<NightModeNotifier, NightMode>(NightModeNotifier.new);
 
-enum MapOrientation {
-  headingUp('Ikut arah'),
-  northUp('Utara ke atas');
-
-  const MapOrientation(this.label);
-  final String label;
-}
+/// Shown in Settings as "Ikut arah" / "Utara ke atas" (see AppStrings).
+enum MapOrientation { headingUp, northUp }
 
 /// Heading-up turns the map so the road ahead is always at the top while you drive.
 class MapOrientationNotifier extends Notifier<MapOrientation> {

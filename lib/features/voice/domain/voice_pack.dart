@@ -42,6 +42,7 @@ class VoicePack {
     this.then = '',
     this.short = const {},
     this.ordinals = const [],
+    this.exitWord = 'exit',
   });
 
   final String id;
@@ -58,6 +59,9 @@ class VoicePack {
   final String then;
   final Map<Cue, String> short; // "belok kiri", "keep right"...
   final List<String> ordinals; // first, second, third... for roundabout exits
+
+  /// The word before an exit number in {exit}: "exit 2 0 9", or "出口 2 0 9".
+  final String exitWord;
 }
 
 /// Valhalla maneuver type -> cue. Null means "say nothing" (straight on, start, arrival...).
@@ -155,13 +159,13 @@ String spokenToward(ExitSign? sign) {
 /// The exit as said out loud: "exit 2 0 9, UPM", "exit 3 3 0 6 C", or "exit Salak". The number
 /// is read one character at a time, as people read exit numbers off the sign; a text-to-speech
 /// voice would otherwise say "one thousand two hundred and three".
-String spokenExit(ExitSign? sign) {
+String spokenExit(ExitSign? sign, {String word = 'exit'}) {
   if (sign == null) return '';
   final number = sign.numberText?.trim() ?? '';
   final name = sign.name.isEmpty ? '' : sign.name.first.trim();
   if (number.isEmpty && name.isEmpty) return '';
   final digits = number.split('').where((c) => c.trim().isNotEmpty).join(' ');
-  return [if (digits.isNotEmpty) 'exit $digits' else 'exit $name', if (digits.isNotEmpty && name.isNotEmpty) name]
+  return [if (digits.isNotEmpty) '$word $digits' else '$word $name', if (digits.isNotEmpty && name.isNotEmpty) name]
       .join(', ');
 }
 

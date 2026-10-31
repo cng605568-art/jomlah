@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../core/geo.dart';
+import '../../../core/l10n/language.dart';
 import '../../../core/prefs.dart';
 import '../../map/application/providers.dart';
 import '../../map/domain/report.dart';
@@ -12,13 +13,24 @@ import '../domain/voice_packs.dart';
 import '../domain/voice_settings.dart';
 import 'voice_engine.dart';
 
+/// The language a voice speaks, from its text-to-speech locale ("zh-CN" -> 中文).
+AppLanguage voiceLanguage(VoicePack pack) => AppLanguage.fromCode(pack.locale.split('-').first) ?? AppLanguage.ms;
+
+/// The voice a language starts with.
+VoicePack defaultVoiceFor(AppLanguage language) => switch (language) {
+      AppLanguage.ms => kMamakBoss,
+      AppLanguage.en => kSerious,
+      AppLanguage.zh => kZhFriend,
+    };
+
 class VoiceSettingsNotifier extends Notifier<VoiceSettings> {
   @override
   VoiceSettings build() {
     final prefs = ref.read(sharedPrefsProvider);
     final id = prefs.getString('voice.pack');
+    final fallback = defaultVoiceFor(ref.read(languageProvider)); // first run: the app's language
     return VoiceSettings(
-      pack: kVoicePacks.firstWhere((p) => p.id == id, orElse: () => kMamakBoss),
+      pack: kVoicePacks.firstWhere((p) => p.id == id, orElse: () => fallback),
       muted: prefs.getBool('voice.muted') ?? false,
     );
   }
@@ -26,6 +38,12 @@ class VoiceSettingsNotifier extends Notifier<VoiceSettings> {
   void setPack(VoicePack p) {
     state = state.copyWith(pack: p);
     ref.read(sharedPrefsProvider).setString('voice.pack', p.id);
+  }
+
+  /// After the app's language changes: switch to that language's voice, unless the current voice
+  /// already speaks it.
+  void matchLanguage(AppLanguage language) {
+    if (voiceLanguage(state.pack) != language) setPack(defaultVoiceFor(language));
   }
 
   void toggleMute() {

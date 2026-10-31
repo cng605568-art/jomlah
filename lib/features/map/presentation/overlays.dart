@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/app_theme.dart';
+import '../../../core/l10n/language.dart';
 import '../domain/report.dart';
 
 // The pieces that float over the map. They take plain values and callbacks (no providers), so the
@@ -81,7 +82,7 @@ class ReportButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Semantics(
         button: true,
-        label: 'Lapor',
+        label: context.s.report,
         child: _TapFace(
           face: BoxDecoration(
             gradient: const LinearGradient(
@@ -129,7 +130,7 @@ class SpeedCard extends StatelessWidget {
               style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, height: 1),
             ),
             Text(
-              'km/j',
+              context.s.kmh,
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
@@ -148,7 +149,7 @@ class SpeedLimitSign extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Semantics(
-        label: 'Had laju $kph km/j',
+        label: context.s.speedLimit(kph),
         child: Container(
           width: 60,
           height: 60,
@@ -220,7 +221,7 @@ class ReportGrid extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Apa yang anda nampak?', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+          Text(context.s.whatDoYouSee, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
           const SizedBox(height: 14),
           GridView.count(
             crossAxisCount: 3,
@@ -243,7 +244,7 @@ class ReportGrid extends StatelessWidget {
                         ReportBadge(type: t),
                         const SizedBox(height: 8),
                         Text(
-                          t.label,
+                          context.s.reportLabel(t),
                           textAlign: TextAlign.center,
                           maxLines: 2,
                           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
@@ -454,7 +455,7 @@ class StatusCard extends StatelessWidget {
           children: [
             Expanded(child: DefaultTextStyle.merge(style: const TextStyle(fontWeight: FontWeight.w600), child: child)),
             if (onClose != null)
-              IconButton(onPressed: onClose, icon: const Icon(Icons.close_rounded), tooltip: 'Batal'),
+              IconButton(onPressed: onClose, icon: const Icon(Icons.close_rounded), tooltip: context.s.cancel),
           ],
         ),
       );
@@ -472,7 +473,7 @@ class TopBackBar extends StatelessWidget {
           MapButton(
             icon: Icons.arrow_back_ios_new_rounded,
             onPressed: onBack,
-            tooltip: 'Batal',
+            tooltip: context.s.cancel,
             color: Colors.white,
           ),
           const SizedBox(width: 10),
@@ -545,7 +546,7 @@ class RouteOptionsPanel extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 14),
-              const Text('Pilih laluan', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+              Text(context.s.chooseRoute, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
               const SizedBox(height: 12),
               for (var i = 0; i < options.length; i++)
                 Padding(
@@ -589,16 +590,16 @@ class _RouteCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('${option.minutes} min',
+                      Text(context.s.minutes(option.minutes),
                           style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, height: 1.1)),
                       Text('${option.km.toStringAsFixed(1)} km',
                           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textMuted)),
                     ],
                   ),
                 ),
-                if (option.fastest) const _Badge('Terpantas', AppColors.go, Color(0x2E34D399)),
+                if (option.fastest) _Badge(context.s.fastest, AppColors.go, const Color(0x2E34D399)),
                 if (option.fastest && option.toll) const SizedBox(width: 6),
-                if (option.toll) const _Badge('Tol', AppColors.warning, Color(0x2EF59E0B)),
+                if (option.toll) _Badge(context.s.toll, AppColors.warning, const Color(0x2EF59E0B)),
               ],
             ),
           ),
@@ -633,14 +634,14 @@ class _GoButton extends StatelessWidget {
         radius: 20,
         shadows: const [BoxShadow(color: Color(0x732563EB), blurRadius: 24, offset: Offset(0, 10))],
         onTap: onPressed,
-        child: const SizedBox(
+        child: SizedBox(
           height: 60,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.navigation_rounded, color: Colors.white),
-              SizedBox(width: 10),
-              Text('Jom!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+              const Icon(Icons.navigation_rounded, color: Colors.white),
+              const SizedBox(width: 10),
+              Text(context.s.go, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
             ],
           ),
         ),
@@ -659,12 +660,13 @@ class SimulateButtonFace extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: AppColors.outline, width: 2),
         ),
-        child: const Row(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.science_outlined, color: AppColors.sky, size: 22),
-            SizedBox(width: 8),
-            Text('Simulasi', style: TextStyle(color: AppColors.sky, fontWeight: FontWeight.w700, fontSize: 16)),
+            const Icon(Icons.science_outlined, color: AppColors.sky, size: 22),
+            const SizedBox(width: 8),
+            Text(context.s.simulate,
+                style: const TextStyle(color: AppColors.sky, fontWeight: FontWeight.w700, fontSize: 16)),
           ],
         ),
       );
@@ -701,7 +703,7 @@ class TripBar extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('$minutes min',
+                    Text(context.s.minutes(minutes),
                         style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: AppColors.go, height: 1)),
                     const SizedBox(height: 4),
                     Text(detail,
@@ -714,7 +716,7 @@ class TripBar extends StatelessWidget {
               ReportButton(onPressed: onReport, size: 56, radius: 20, glow: false),
               const SizedBox(width: 10),
               Tooltip(
-                message: 'Tamat perjalanan',
+                message: context.s.endTrip,
                 child: Material(
                   color: const Color(0x26EF4444),
                   shape: RoundedRectangleBorder(

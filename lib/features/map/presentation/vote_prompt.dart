@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../application/providers.dart';
 import 'overlays.dart';
 import '../../../core/app_theme.dart';
+import '../../../core/l10n/language.dart';
 
 /// "Masih ada Abang Polis?" Two big buttons, gone after 10 seconds.
 class VotePrompt extends ConsumerWidget {
@@ -36,20 +37,20 @@ class VotePrompt extends ConsumerWidget {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                'Masih ada ${report.type.label}?',
+                context.s.stillThere(context.s.reportLabel(report.type)),
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               ),
             ),
             FilledButton(
               style: FilledButton.styleFrom(minimumSize: const Size(72, 56)),
               onPressed: () => answer(true),
-              child: const Text('Ada'),
+              child: Text(context.s.yesStillThere),
             ),
             const SizedBox(width: 8),
             OutlinedButton(
               style: OutlinedButton.styleFrom(minimumSize: const Size(72, 56)),
               onPressed: () => answer(false),
-              child: const Text('Tak ada'),
+              child: Text(context.s.gone),
             ),
           ],
         ),

@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 import 'package:latlong2/latlong.dart';
 import '../../../core/geo.dart';
+import '../../../core/l10n/language.dart';
+import '../../../core/l10n/strings.dart';
 
 class TripSummary {
   const TripSummary({
@@ -57,11 +59,5 @@ class TripStats {
   }
 }
 
-/// "45 s", "23 min", "1 j 05 min" (j = jam, hour in Malay).
-String formatDuration(Duration d) {
-  final s = d.inSeconds;
-  if (s < 60) return '$s s';
-  final m = (s / 60).round();
-  if (m < 60) return '$m min';
-  return '${m ~/ 60} j ${(m % 60).toString().padLeft(2, '0')} min';
-}
+/// "45 s", "23 min", "1 j 05 min" (j = jam, hour in Malay); other languages via [s].
+String formatDuration(Duration d, [AppStrings s = const AppStrings(AppLanguage.ms)]) => s.duration(d);

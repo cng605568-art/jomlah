@@ -5,6 +5,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../core/app_info.dart';
 import '../../../core/device_id.dart';
+import '../../../core/l10n/language.dart';
+import '../../../core/l10n/strings.dart';
 import '../../../core/prefs.dart';
 import '../../routing/application/routing_providers.dart';
 import '../../routing/domain/route_plan.dart';
@@ -21,7 +23,7 @@ final reportRepositoryProvider = Provider<ReportRepository>((ref) {
   );
 });
 
-LocationSettings _locationSettings({required bool navigating}) {
+LocationSettings _locationSettings({required bool navigating, required AppStrings s}) {
   if (defaultTargetPlatform == TargetPlatform.android) {
     return AndroidSettings(
       accuracy: LocationAccuracy.bestForNavigation,
@@ -30,10 +32,10 @@ LocationSettings _locationSettings({required bool navigating}) {
       // While a trip is running, Android keeps us alive with a notification, so directions
       // and voice keep working with the screen off or another app on top.
       foregroundNotificationConfig: navigating
-          ? const ForegroundNotificationConfig(
-              notificationTitle: 'Jomlah sedang memandu anda',
-              notificationText: 'Navigasi aktif. Ketik untuk kembali ke app.',
-              notificationChannelName: 'Navigasi',
+          ? ForegroundNotificationConfig(
+              notificationTitle: s.notificationTitle,
+              notificationText: s.notificationText,
+              notificationChannelName: s.notificationChannel,
               enableWakeLock: true,
             )
           : null,
@@ -58,7 +60,7 @@ final locationProvider = StreamProvider<Position>((ref) async* {
     throw Exception('Location permission denied');
   }
   yield* Geolocator.getPositionStream(
-    locationSettings: _locationSettings(navigating: navigating),
+    locationSettings: _locationSettings(navigating: navigating, s: ref.read(stringsProvider)),
   );
 });
 
@@ -84,12 +86,14 @@ class ReportsState {
       );
 }
 
-String _errorText(Object e, String fallback) =>
-    e is ReportException ? e.message : fallback;
+String _errorText(Object e, String fallback, AppStrings s) =>
+    e is ReportException && e.tooMany ? s.reportTooMany : fallback;
 
 class ReportsNotifier extends Notifier<ReportsState> {
   @override
   ReportsState build() => const ReportsState();
+
+  AppStrings get _s => ref.read(stringsProvider); // messages in the app's language
 
   /// Replaces the list with what the server says is active near [center].
   /// Quiet on failure: a missed refresh should not nag a driver.
@@ -118,13 +122,13 @@ class ReportsNotifier extends Notifier<ReportsState> {
           saved, // may replace an existing alert the server merged us into
         ],
         submitting: false,
-        toast: 'Terima kasih! ${type.label} dilaporkan.',
+        toast: _s.reported(_s.reportLabel(type)),
       );
     } catch (e) {
       state = state.copyWith(
         reports: state.reports,
         submitting: false,
-        toast: _errorText(e, 'Alamak, tak jadi hantar. Cuba lagi.'),
+        toast: _errorText(e, _s.reportFailed, _s),
       );
     }
   }
@@ -144,14 +148,12 @@ class ReportsNotifier extends Notifier<ReportsState> {
               updated,
         ],
         submitting: state.submitting,
-        toast: stillThere
-            ? 'Terima kasih! Laporan disahkan.'
-            : 'Terima kasih! Kami tandakan dah tak ada.',
+        toast: stillThere ? _s.voteConfirmed : _s.voteGone,
       );
     } catch (e) {
       state = state.copyWith(
         reports: state.reports,
-        toast: _errorText(e, 'Undi tak masuk. Cuba lagi.'),
+        toast: _errorText(e, _s.voteFailed, _s),
       );
     }
   }

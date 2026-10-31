@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/l10n/language.dart';
 import '../domain/report.dart';
 import 'overlays.dart';
 
@@ -12,7 +13,7 @@ class ReportPin extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Tooltip(
-        message: report.type.label,
+        message: context.s.reportLabel(report.type),
         child: Container(
           padding: const EdgeInsets.all(3),
           decoration: const BoxDecoration(

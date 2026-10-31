@@ -72,7 +72,7 @@ class VoiceEngine {
     final pack = settings().pack;
     final street = m.streetNames.isEmpty ? '' : m.streetNames.first;
     final toward = spokenToward(m.sign);
-    final exit = spokenExit(m.sign);
+    final exit = spokenExit(m.sign, word: pack.exitWord);
     final nth = spokenOrdinal(m.roundaboutExit, pack);
     final then = thenPhrase(next.plan!, m, pack, speedMps: _speedMps);
 

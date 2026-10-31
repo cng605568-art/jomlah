@@ -3,8 +3,9 @@ import 'package:uuid/uuid.dart';
 import '../domain/report.dart';
 
 class ReportException implements Exception {
-  ReportException(this.message);
-  final String message;
+  ReportException(this.message, {this.tooMany = false});
+  final String message; // for logs; the app shows its own words
+  final bool tooMany; // the server asked us to slow down
   @override
   String toString() => message;
 }

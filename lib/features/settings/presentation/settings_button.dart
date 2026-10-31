@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/app_info.dart';
+import '../../../core/l10n/language.dart';
 import '../../map/application/map_style_provider.dart';
 import '../../routing/application/route_prefs_provider.dart';
 import '../../routing/domain/route_prefs.dart';
@@ -9,6 +10,7 @@ import '../../voice/application/voice_providers.dart';
 import '../../voice/domain/voice_packs.dart';
 import '../../../core/app_theme.dart';
 import '../../map/presentation/overlays.dart';
+import '../application/language_choice.dart';
 
 class SettingsButton extends ConsumerWidget {
   const SettingsButton({super.key, this.glass = false});
@@ -22,10 +24,10 @@ class SettingsButton extends ConsumerWidget {
     final muted = ref.watch(voiceSettingsProvider.select((s) => s.muted));
     final icon = muted ? Icons.volume_off_rounded : Icons.tune_rounded;
     if (glass) {
-      return MapButton(icon: icon, onPressed: () => _openSheet(context), tooltip: 'Tetapan');
+      return MapButton(icon: icon, onPressed: () => _openSheet(context), tooltip: context.s.settings);
     }
     return Tooltip(
-      message: 'Tetapan',
+      message: context.s.settings,
       child: Material(
         color: AppColors.raised,
         shape: const CircleBorder(),
@@ -55,6 +57,13 @@ class SettingsButton extends ConsumerWidget {
           final prefsCtl = ref.read(routePrefsProvider.notifier);
           final night = ref.watch(nightModeProvider);
           final orientation = ref.watch(mapOrientationProvider);
+          final language = ref.watch(languageProvider);
+          final s = context.s;
+          // Voices in the app's language first, then the others.
+          final packs = [
+            ...kVoicePacks.where((p) => voiceLanguage(p) == language),
+            ...kVoicePacks.where((p) => voiceLanguage(p) != language),
+          ];
 
           return ConstrainedBox(
             constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.85),
@@ -64,62 +73,87 @@ class SettingsButton extends ConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const _Heading('Laluan'),
+                    _Heading(s.languageTitle),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final l in AppLanguage.values)
+                            ChoiceChip(
+                              label: Text(l.nativeName),
+                              selected: l == language,
+                              onSelected: (_) => chooseLanguage(ref, l),
+                            ),
+                        ],
+                      ),
+                    ),
+                    _Heading(s.route),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: SegmentedButton<Vehicle>(
                         segments: [
                           for (final v in Vehicle.values)
-                            ButtonSegment(value: v, label: Text(v.label)),
+                            ButtonSegment(value: v, label: Text(v == Vehicle.car ? s.car : s.motorcycle)),
                         ],
                         selected: {prefs.vehicle},
                         onSelectionChanged: (s) => prefsCtl.setVehicle(s.first),
                       ),
                     ),
                     SwitchListTile(
-                      title: const Text('Kurangkan tol'),
-                      subtitle: const Text('Cuba elak jalan bertol. Tak dijamin kalau tiada pilihan lain.'),
+                      title: Text(s.avoidTolls),
+                      subtitle: Text(s.avoidTollsHint),
                       value: prefs.avoidTolls,
                       onChanged: prefsCtl.setAvoidTolls,
                     ),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: Text('Berkuat kuasa pada laluan seterusnya.',
-                          style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(s.fromNextRoute, style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
                     ),
-                    const _Heading('Arah peta semasa memandu'),
+                    _Heading(s.mapDirection),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: SegmentedButton<MapOrientation>(
                         segments: [
                           for (final m in MapOrientation.values)
-                            ButtonSegment(value: m, label: Text(m.label)),
+                            ButtonSegment(
+                              value: m,
+                              label: Text(m == MapOrientation.headingUp ? s.headingUp : s.northUp),
+                            ),
                         ],
                         selected: {orientation},
                         onSelectionChanged: (s) =>
                             ref.read(mapOrientationProvider.notifier).set(s.first),
                       ),
                     ),
-                    const _Heading('Peta malam'),
+                    _Heading(s.nightMap),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: SegmentedButton<NightMode>(
                         segments: [
                           for (final m in NightMode.values)
-                            ButtonSegment(value: m, label: Text(m.label)),
+                            ButtonSegment(
+                              value: m,
+                              label: Text(switch (m) {
+                                NightMode.auto => s.auto,
+                                NightMode.always => s.on,
+                                NightMode.never => s.off,
+                              }),
+                            ),
                         ],
                         selected: {night},
                         onSelectionChanged: (s) =>
                             ref.read(nightModeProvider.notifier).set(s.first),
                       ),
                     ),
-                    const _Heading('Suara'),
+                    _Heading(s.voice),
                     SwitchListTile(
-                      title: const Text('Senyapkan suara'),
+                      title: Text(s.muteVoice),
                       value: voice.muted,
                       onChanged: (_) => voiceCtl.toggleMute(),
                     ),
-                    for (final p in kVoicePacks)
+                    for (final p in packs)
                       ListTile(
                         leading: Icon(
                           p.id == voice.pack.id
@@ -127,32 +161,36 @@ class SettingsButton extends ConsumerWidget {
                               : Icons.radio_button_off,
                         ),
                         title: Text(p.name),
-                        subtitle: Text(p.tagline),
+                        subtitle: Text('${p.tagline} · ${voiceLanguage(p).nativeName}'),
                         onTap: () {
                           voiceCtl.setPack(p);
                           ref.read(voiceEngineProvider).preview(); // plays a sample
                         },
                       ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                      child: Text(s.voiceNeedsTts, style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                    ),
                     const Divider(),
                     if (kPrivacyUrl.isNotEmpty)
                       ListTile(
                         leading: const Icon(Icons.lock_outline),
-                        title: const Text('Privasi'),
-                        subtitle: const Text('Apa yang kami simpan dan tidak simpan'),
+                        title: Text(s.privacy),
+                        subtitle: Text(s.privacyHint),
                         onTap: () => _open(kPrivacyUrl),
                       ),
                     if (kFeedbackUrl.isNotEmpty)
                       ListTile(
                         leading: const Icon(Icons.bug_report_outlined),
-                        title: const Text('Lapor masalah / cadangan'),
-                        subtitle: const Text('Dibuka di GitHub'),
+                        title: Text(s.feedback),
+                        subtitle: Text(s.opensOnGithub),
                         onTap: () => _open(kFeedbackUrl),
                       ),
                     ListTile(
                       leading: const Icon(Icons.info_outline),
                       title: Text('Jomlah $kAppVersion'),
                       subtitle: Text(
-                        kDemoMode ? 'Mod demo: amaran contoh sahaja' : 'Disambung ke pelayan amaran',
+                        kDemoMode ? s.demoMode : s.connectedToAlerts,
                       ),
                     ),
                   ],

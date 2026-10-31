@@ -6,6 +6,7 @@ import '../application/places_provider.dart';
 import '../application/search_providers.dart';
 import '../domain/place.dart';
 import '../../../core/app_theme.dart';
+import '../../../core/l10n/language.dart';
 
 class SearchBox extends ConsumerStatefulWidget {
   const SearchBox({super.key, required this.onPick, this.trailing});
@@ -53,10 +54,11 @@ class _SearchBoxState extends ConsumerState<SearchBox> {
     widget.onPick(p);
   }
 
-  void _shortcut(Place? p, String label) {
+  /// [setAs] is the menu item that saves this shortcut ("Jadikan Rumah").
+  void _shortcut(Place? p, String setAs) {
     if (p == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Cari tempat, tekan ⋮ di sebelahnya, pilih "Jadikan $label".')),
+        SnackBar(content: Text(context.s.shortcutHowTo(setAs))),
       );
       return;
     }
@@ -71,7 +73,7 @@ class _SearchBoxState extends ConsumerState<SearchBox> {
       places.setWork(p);
     }
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${where == 'home' ? 'Rumah' : 'Pejabat'} disimpan.')),
+      SnackBar(content: Text(context.s.placeSaved(where == 'home' ? context.s.home : context.s.work))),
     );
   }
 
@@ -82,11 +84,11 @@ class _SearchBoxState extends ConsumerState<SearchBox> {
             ? null
             : Text(p.subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
         trailing: PopupMenuButton<String>(
-          tooltip: 'Lagi',
+          tooltip: context.s.more,
           onSelected: (v) => _save(v, p),
-          itemBuilder: (_) => const [
-            PopupMenuItem(value: 'home', child: Text('Jadikan Rumah')),
-            PopupMenuItem(value: 'work', child: Text('Jadikan Pejabat')),
+          itemBuilder: (_) => [
+            PopupMenuItem(value: 'home', child: Text(context.s.setAsHome)),
+            PopupMenuItem(value: 'work', child: Text(context.s.setAsWork)),
           ],
         ),
         onTap: () => _choose(p),
@@ -100,6 +102,7 @@ class _SearchBoxState extends ConsumerState<SearchBox> {
     final searching = s.query.length >= 3;
     final showShortcuts = _focus.hasFocus && !searching;
     final showChips = !_focus.hasFocus && _text.text.isEmpty;
+    final t = context.s;
 
     final pill = Material(
       color: AppColors.overlay,
@@ -123,7 +126,7 @@ class _SearchBoxState extends ConsumerState<SearchBox> {
             },
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             decoration: InputDecoration(
-              hintText: 'Nak ke mana?',
+              hintText: t.searchHint,
               hintStyle: const TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.w600),
               prefixIcon: const Padding(
                 padding: EdgeInsets.only(left: 8),
@@ -146,9 +149,9 @@ class _SearchBoxState extends ConsumerState<SearchBox> {
                   Expanded(
                     child: _ShortcutCard(
                       icon: Icons.home_outlined,
-                      label: 'Rumah',
+                      label: t.home,
                       place: places.home,
-                      onTap: () => _shortcut(places.home, 'Rumah'),
+                      onTap: () => _shortcut(places.home, t.setAsHome),
                       onClear: placesCtl.clearHome,
                     ),
                   ),
@@ -156,9 +159,9 @@ class _SearchBoxState extends ConsumerState<SearchBox> {
                   Expanded(
                     child: _ShortcutCard(
                       icon: Icons.work_outline,
-                      label: 'Pejabat',
+                      label: t.work,
                       place: places.work,
-                      onTap: () => _shortcut(places.work, 'Pejabat'),
+                      onTap: () => _shortcut(places.work, t.setAsWork),
                       onClear: placesCtl.clearWork,
                     ),
                   ),
@@ -179,11 +182,11 @@ class _SearchBoxState extends ConsumerState<SearchBox> {
           ],
           if (searching && s.loading && s.results.isEmpty) const LinearProgressIndicator(),
           if (searching && s.error != null)
-            Padding(padding: const EdgeInsets.all(16), child: Text(s.error!)),
+            Padding(padding: const EdgeInsets.all(16), child: Text(t.searchFailed)),
           if (searching && !s.loading && s.error == null && s.results.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text('Tiada hasil. Cuba nama lain.'),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(t.noResults),
             ),
           if (searching && s.results.isNotEmpty)
             ConstrainedBox(
@@ -214,13 +217,13 @@ class _SearchBoxState extends ConsumerState<SearchBox> {
               children: [
                 _PlaceChip(
                   icon: Icons.home_rounded,
-                  label: 'Rumah',
-                  onTap: () => _shortcut(places.home, 'Rumah'),
+                  label: t.home,
+                  onTap: () => _shortcut(places.home, t.setAsHome),
                 ),
                 _PlaceChip(
                   icon: Icons.work_rounded,
-                  label: 'Pejabat',
-                  onTap: () => _shortcut(places.work, 'Pejabat'),
+                  label: t.work,
+                  onTap: () => _shortcut(places.work, t.setAsWork),
                 ),
               ],
             ),
@@ -301,7 +304,7 @@ class _ShortcutCard extends StatelessWidget {
                   children: [
                     Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
                     Text(
-                      place?.name ?? 'Belum ditetapkan',
+                      place?.name ?? context.s.notSetYet,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontSize: 12, color: AppColors.textMuted),

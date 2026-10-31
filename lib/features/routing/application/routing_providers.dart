@@ -49,7 +49,7 @@ class NavState {
   final bool previewing; // choosing a route, trip not started yet
   final bool loading;
   final bool rerouting;
-  final String? error;
+  final RouteError? error;
   final Maneuver? next; // the upcoming maneuver
   final double distanceToNextM;
   final double remainingM;
@@ -121,9 +121,9 @@ class RoutingNotifier extends Notifier<NavState> {
         from,
       );
     } on RoutingException catch (e) {
-      state = NavState(destination: to, error: e.message);
+      state = NavState(destination: to, error: e.kind);
     } catch (_) {
-      state = NavState(destination: to, error: 'Alamak, ada masalah. Cuba lagi.');
+      state = NavState(destination: to, error: RouteError.problem);
     }
   }
 

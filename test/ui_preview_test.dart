@@ -3,13 +3,17 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:jomlah/core/app_theme.dart';
+import 'package:jomlah/core/l10n/language.dart';
+import 'package:jomlah/core/l10n/strings.dart';
 import 'package:jomlah/core/prefs.dart';
 import 'package:jomlah/features/map/presentation/car_marker.dart';
 import 'package:jomlah/features/map/presentation/overlays.dart';
+import 'package:jomlah/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:jomlah/features/search/presentation/search_box.dart';
 import 'package:jomlah/features/settings/presentation/settings_button.dart';
 
@@ -32,6 +36,27 @@ Future<void> _loadFonts() async {
     final icons = FontLoader('MaterialIcons')..addFont(Future.value(ByteData.sublistView(bytes)));
     await icons.load();
   }
+  // Phones bring their own Chinese font; the test machine does not, so the workflow fetches one.
+  final cjkPath = Platform.environment['CJK_FONT'] ?? '';
+  if (cjkPath.isNotEmpty && File(cjkPath).existsSync()) {
+    final bytes = File(cjkPath).readAsBytesSync();
+    final cjk = FontLoader('NotoSansSC')..addFont(Future.value(ByteData.sublistView(bytes)));
+    await cjk.load();
+  }
+}
+
+/// The app's theme and language setup, as in main.dart, plus the Chinese test font as a fallback.
+Widget _app(Widget home, {AppLanguage lang = AppLanguage.ms}) {
+  final theme = buildAppTheme();
+  return MaterialApp(
+    debugShowCheckedModeBanner: false,
+    theme: theme.copyWith(textTheme: theme.textTheme.apply(fontFamilyFallback: const ['NotoSansSC'])),
+    locale: lang.locale,
+    supportedLocales: [for (final l in AppLanguage.values) l.locale],
+    localizationsDelegates: GlobalMaterialLocalizations.delegates,
+    builder: (context, child) => StringsScope(strings: AppStrings(lang), child: child!),
+    home: home,
+  );
 }
 
 /// A plain street map: blocks, a park, a river and roads, plus an optional route line.
@@ -94,11 +119,15 @@ class _FakeMap extends CustomPainter {
   bool shouldRepaint(_FakeMap oldDelegate) => false;
 }
 
-Widget _phone(Widget overlay, {List<Offset> route = const [], List<Offset> alt = const [], Offset car = const Offset(175, 410)}) =>
-    MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: buildAppTheme(),
-      home: Scaffold(
+Widget _phone(
+  Widget overlay, {
+  List<Offset> route = const [],
+  List<Offset> alt = const [],
+  Offset car = const Offset(175, 410),
+  AppLanguage lang = AppLanguage.ms,
+}) =>
+    _app(
+      Scaffold(
         body: Stack(
           children: [
             Positioned.fill(child: CustomPaint(painter: _FakeMap(route: route, altRoute: alt))),
@@ -107,7 +136,14 @@ Widget _phone(Widget overlay, {List<Offset> route = const [], List<Offset> alt =
           ],
         ),
       ),
+      lang: lang,
     );
+
+/// Saved settings for a scene: the app language and nothing else.
+Future<SharedPreferences> _prefs({AppLanguage lang = AppLanguage.ms}) async {
+  SharedPreferences.setMockInitialValues({LanguageNotifier.key: lang.code});
+  return SharedPreferences.getInstance();
+}
 
 /// Tests draw shadows as hard blocks by default; previews should look like the phone.
 Future<void> _withShadows(WidgetTester tester, Future<void> Function() body) async {
@@ -289,5 +325,148 @@ void main() {
     ])));
     await tester.pumpAndSettle();
     await _withShadows(tester, () => expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/5_over_limit.png')));
+  }, skip: !_enabled);
+
+  // ---- The same screens in Chinese ----
+  testWidgets('6 zh first run', (tester) async {
+    await _setPhone(tester);
+    final prefs = await _prefs(lang: AppLanguage.zh);
+    await tester.pumpWidget(ProviderScope(
+      overrides: [sharedPrefsProvider.overrideWithValue(prefs)],
+      child: _app(OnboardingScreen(onDone: () {}), lang: AppLanguage.zh),
+    ));
+    await tester.pumpAndSettle();
+    await _withShadows(tester, () => expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/6_zh_first_run.png')));
+  }, skip: !_enabled);
+
+  testWidgets('7 zh browsing', (tester) async {
+    await _setPhone(tester);
+    final prefs = await _prefs(lang: AppLanguage.zh);
+    await tester.pumpWidget(ProviderScope(
+      overrides: [sharedPrefsProvider.overrideWithValue(prefs)],
+      child: _phone(
+        Stack(children: [
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                child: SearchBox(onPick: (_) {}, trailing: const SettingsButton()),
+              ),
+            ),
+          ),
+          const Positioned(left: 16, bottom: browseBase, child: SpeedCard(kmh: 0)),
+          Positioned(right: 16, bottom: browseBase, child: ReportButton(onPressed: () {})),
+        ]),
+        lang: AppLanguage.zh,
+      ),
+    ));
+    await tester.pumpAndSettle();
+    await _withShadows(tester, () => expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/7_zh_browse.png')));
+  }, skip: !_enabled);
+
+  testWidgets('8 zh choosing a route', (tester) async {
+    await _setPhone(tester);
+    await tester.pumpWidget(_phone(
+      Stack(children: [
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+              child: TopBackBar(title: 'Mid Valley Megamall', onBack: () {}),
+            ),
+          ),
+        ),
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: RouteOptionsPanel(
+            options: const [
+              RouteOption(minutes: 18, km: 12.4, fastest: true, toll: true),
+              RouteOption(minutes: 22, km: 10.9),
+            ],
+            selected: 0,
+            onSelect: (_) {},
+            onGo: () {},
+            simulate: const SimulateButtonFace(),
+          ),
+        ),
+      ]),
+      car: const Offset(175, 470),
+      route: const [Offset(175, 470), Offset(175, 160), Offset(330, 130), Offset(360, 300)],
+      alt: const [Offset(175, 470), Offset(175, 410), Offset(330, 410), Offset(360, 300)],
+      lang: AppLanguage.zh,
+    ));
+    await tester.pumpAndSettle();
+    await _withShadows(tester, () => expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/8_zh_choose.png')));
+  }, skip: !_enabled);
+
+  testWidgets('9 zh driving', (tester) async {
+    await _setPhone(tester);
+    final prefs = await _prefs(lang: AppLanguage.zh);
+    await tester.pumpWidget(ProviderScope(
+      overrides: [sharedPrefsProvider.overrideWithValue(prefs)],
+      child: _phone(
+        Stack(children: [
+          const Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(12, 8, 12, 0),
+                child: TurnCard(
+                  icon: Icons.fork_left,
+                  distance: '510 m',
+                  title: 'Lebuhraya Utara-Selatan',
+                  sign: '209 号出口 · 往 Serdang / Seri Kembangan',
+                  lanes: [
+                    LaneArrow(Icons.turn_slight_left, LaneLook.best),
+                    LaneArrow(Icons.turn_slight_left, LaneLook.ok),
+                    LaneArrow(Icons.straight, LaneLook.off),
+                    LaneArrow(Icons.straight, LaneLook.off),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: TripBar(minutes: 12, detail: '4.3 km · 21:52 抵达', onReport: () {}, onEnd: () {}),
+          ),
+          const Positioned(left: 16, bottom: driveBase, child: SpeedCard(kmh: 62)),
+          const Positioned(left: 92, bottom: driveBase + 4, child: SpeedLimitSign(kph: 60)),
+          const Positioned(right: 16, bottom: driveBase, child: SettingsButton(glass: true)),
+        ]),
+        car: const Offset(175, 600),
+        route: const [Offset(175, 600), Offset(175, 300), Offset(400, 250)],
+        lang: AppLanguage.zh,
+      ),
+    ));
+    await tester.pumpAndSettle();
+    await _withShadows(tester, () => expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/9_zh_drive.png')));
+  }, skip: !_enabled);
+
+  testWidgets('10 zh settings', (tester) async {
+    await _setPhone(tester);
+    final prefs = await _prefs(lang: AppLanguage.zh);
+    await tester.pumpWidget(ProviderScope(
+      overrides: [sharedPrefsProvider.overrideWithValue(prefs)],
+      child: _phone(
+        const Stack(children: [Positioned(right: 16, bottom: driveBase, child: SettingsButton(glass: true))]),
+        lang: AppLanguage.zh,
+      ),
+    ));
+    await tester.tap(find.byType(SettingsButton));
+    await tester.pumpAndSettle();
+    await _withShadows(tester, () => expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/10_zh_settings.png')));
   }, skip: !_enabled);
 }

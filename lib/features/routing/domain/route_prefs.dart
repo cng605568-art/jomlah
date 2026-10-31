@@ -1,10 +1,10 @@
+/// Shown in Settings as Kereta / Motosikal (see AppStrings).
 enum Vehicle {
-  car('auto', 'Kereta'),
-  motorcycle('motorcycle', 'Motosikal');
+  car('auto'),
+  motorcycle('motorcycle');
 
-  const Vehicle(this.costing, this.label);
+  const Vehicle(this.costing);
   final String costing; // Valhalla costing model name
-  final String label;
 }
 
 class RoutePrefs {

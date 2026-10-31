@@ -14,11 +14,19 @@ const _envUrl = String.fromEnvironment('VALHALLA_URL');
 String get valhallaBaseUrl =>
     _envUrl.isEmpty ? 'https://valhalla1.openstreetmap.de' : _envUrl;
 
+/// Why a route could not be planned. The app shows its own words for each (see AppStrings).
+enum RouteError {
+  noConnection, // the routing server did not answer
+  notFound, // it answered, but has no route between the two points
+  problem, // anything else
+}
+
 class RoutingException implements Exception {
-  RoutingException(this.message);
-  final String message;
+  RoutingException(this.kind, [this.detail = '']);
+  final RouteError kind;
+  final String detail; // the server's own (English) explanation, for logs
   @override
-  String toString() => message;
+  String toString() => detail.isEmpty ? kind.name : '${kind.name}: $detail';
 }
 
 class ValhallaClient {
@@ -59,20 +67,20 @@ class ValhallaClient {
           )
           .timeout(const Duration(seconds: 15));
     } catch (_) {
-      throw RoutingException('Alamak, tak dapat hubungi server laluan.');
+      throw RoutingException(RouteError.noConnection);
     }
 
     if (res.statusCode != 200) {
-      var msg = 'Tak jumpa laluan (${res.statusCode}).';
+      var detail = 'HTTP ${res.statusCode}';
       try {
         final err = (jsonDecode(res.body) as Map<String, dynamic>)['error'];
-        if (err is String && err.isNotEmpty) msg = err;
+        if (err is String && err.isNotEmpty) detail = err;
       } catch (_) {}
-      throw RoutingException(msg);
+      throw RoutingException(RouteError.notFound, detail);
     }
 
     final plans = parseValhallaRoutes(utf8.decode(res.bodyBytes));
-    if (plans.isEmpty) throw RoutingException('Tak jumpa laluan.');
+    if (plans.isEmpty) throw RoutingException(RouteError.notFound);
     return plans;
   }
 
