@@ -44,24 +44,3 @@ class MapOrientationNotifier extends Notifier<MapOrientation> {
 final mapOrientationProvider =
     NotifierProvider<MapOrientationNotifier, MapOrientation>(MapOrientationNotifier.new);
 
-/// Shown in Settings as "Baharu" / "Klasik" (see AppStrings). The new look is OpenFreeMap's vector map
-/// (sharp at any zoom, a real dark map at night, labels that stay upright when the map turns).
-/// Classic is the plain OpenStreetMap picture tiles, kept in case the new map misbehaves on a phone.
-enum MapLook { vector, classic }
-
-class MapLookNotifier extends Notifier<MapLook> {
-  static const _key = 'map.look';
-
-  @override
-  MapLook build() {
-    final id = ref.read(sharedPrefsProvider).getString(_key);
-    return MapLook.values.firstWhere((m) => m.name == id, orElse: () => MapLook.vector);
-  }
-
-  void set(MapLook m) {
-    state = m;
-    ref.read(sharedPrefsProvider).setString(_key, m.name);
-  }
-}
-
-final mapLookProvider = NotifierProvider<MapLookNotifier, MapLook>(MapLookNotifier.new);

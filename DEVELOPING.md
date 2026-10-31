@@ -345,7 +345,10 @@ and line. It does not build an APK; `main` still runs the full build, tests incl
   (Simulasi keeps it local) and says "reported" in the app's language (`VoiceEngine.say`).
 - A wake word ("Jom...") is not possible for free: Android's recogniser cannot listen all the time.
 
-## Step 20: vector map (OpenFreeMap)
+## Step 20: vector map (OpenFreeMap), removed again in v1.0.10
+- Removed at the tester's request: on phones it was too buggy, so the app is back to the classic
+  OpenStreetMap raster tiles only (with the night filter). flutter_map stays on 8.x. The notes below
+  are kept for a future attempt (a MapLibre-based map would also allow a tilted 3D view).
 - `flutter_map` 8 plus `flutter_map_vector_tiles` (MapLibre styles drawn on the phone, labels in screen
   space so they stay upright when the map turns). Styles come from OpenFreeMap: free, no key, no
   limits. Day `liberty`, night `fiord` (`dark` was tried: too dim to tell roads apart). See

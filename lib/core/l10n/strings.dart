@@ -256,14 +256,6 @@ class AppStrings {
   String get auto => _t(('Auto', 'Auto', '自动'));
   String get on => _t(('Hidup', 'On', '开'));
   String get off => _t(('Mati', 'Off', '关'));
-  String get mapStyle => _t(('Gaya peta', 'Map style', '地图样式'));
-  String get mapNew => _t(('Baharu', 'New', '新版'));
-  String get mapClassic => _t(('Klasik', 'Classic', '经典'));
-  String get mapStyleHint => _t((
-        'Klasik ialah peta lama OpenStreetMap. Guna kalau peta baharu bermasalah di telefon anda.',
-        'Classic is the old OpenStreetMap map. Use it if the new map misbehaves on your phone.',
-        '经典是旧版 OpenStreetMap 地图。如果新版地图在你的手机上有问题，可以改用它。',
-      ));
   String get voice => _t(('Suara', 'Voice', '语音'));
   String get muteVoice => _t(('Senyapkan suara', 'Mute voice', '静音'));
   String get voiceNeedsTts => _t((

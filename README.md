@@ -46,9 +46,6 @@ sit with them for the five steps. Only install apps from links you trust.
 - An arrival summary (distance, time, average and top speed) with one-tap save as Home or Work
 - After two minutes of crawling, a "Nampak macam jem" prompt so you can report traffic with one tap
 - Turn-by-turn with next-turn card, automatic reroute, current speed, and night map
-- A sharp vector map from OpenFreeMap with a proper dark map at night; street names stay upright
-  when the map turns, and in Chinese where OpenStreetMap has the Chinese name. The old map is
-  still there as "Klasik" in Settings, and comes back by itself if the new one cannot load
 - A speed limit sign next to your speed where OpenStreetMap knows the limit; your speed turns red
   when you are 5 km/j or more over it, and the voice reminds you once per stretch of road
 - Highway exit signs on the turn card (exit number and where it leads), and a "Tol" tag on route options that use toll roads, where OpenStreetMap has the data

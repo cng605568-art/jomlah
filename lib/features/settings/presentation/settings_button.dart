@@ -149,22 +149,6 @@ class SettingsButton extends ConsumerWidget {
                             ref.read(nightModeProvider.notifier).set(s.first),
                       ),
                     ),
-                    _Heading(s.mapStyle),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: SegmentedButton<MapLook>(
-                        segments: [
-                          ButtonSegment(value: MapLook.vector, label: Text(s.mapNew)),
-                          ButtonSegment(value: MapLook.classic, label: Text(s.mapClassic)),
-                        ],
-                        selected: {ref.watch(mapLookProvider)},
-                        onSelectionChanged: (s) => ref.read(mapLookProvider.notifier).set(s.first),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
-                      child: Text(s.mapStyleHint, style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
-                    ),
                     if (!kDemoMode) ...[
                       _Heading(s.liveTraffic),
                       SwitchListTile(

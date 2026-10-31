@@ -33,8 +33,7 @@ We do not run these services, and they have their own policies.
 
 | What for | Service | What it can see |
 |---|---|---|
-| Map (new look, the default) | OpenFreeMap (openfreemap.org), free map tiles made from OpenStreetMap data | Your IP address and the map area you view. The map style and recently viewed tiles are kept on your phone, so the same area is not downloaded again for a while |
-| Map (Klasik, in Settings, or when the new map cannot load) | OpenStreetMap public tile servers | Your IP address and the map area you view |
+| Map pictures | OpenStreetMap public tile servers | Your IP address and the map area you view. Recently viewed map pictures are kept on your phone for a while, so the same area is not downloaded again |
 | New version check | GitHub (where Jomlah's releases are published) | Your IP address, at most twice a day. Nothing else is sent. Turn it off in Settings > "Check for new versions" |
 | Routes | Public Valhalla demo server run by FOSSGIS | Your start and destination coordinates and your IP address when you plan or re-plan a route. After you press Jom! (and after a re-plan), the line of the chosen route is sent back twice: once to look up its speed limits and once for lane arrows |
 | Place search | Komoot's public Photon service | The text you type, your approximate location (to rank results) and your IP address |

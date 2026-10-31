@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map_vector_tiles/flutter_map_vector_tiles.dart' as vt;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
@@ -31,7 +30,6 @@ import '../../voice/presentation/voice_report_sheet.dart';
 import '../application/map_style_provider.dart';
 import '../application/providers.dart';
 import '../application/traffic_providers.dart';
-import '../application/vector_style.dart';
 import '../domain/car_motion.dart';
 import '../domain/gps_filter.dart';
 import '../domain/report.dart';
@@ -102,10 +100,6 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
   Timer? _trafficTimer;
   List<SlowStretch> _slow = const [];
 
-  // The vector map: the style on screen, kept while the next one loads (day to night, new language).
-  MapStyle? _lastStyle;
-  MapStyleKey? _styleKey;
-  late final AppLifecycleListener _life;
 
   double _screenHeight = 800; // logical pixels, remembered from build() for the frame loop
   bool _follow = true;
@@ -122,7 +116,6 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
   void initState() {
     super.initState();
     _ticker = createTicker(_onFrame)..start();
-    _life = AppLifecycleListener(onResume: _retryMapStyle);
     _staleTimer = Timer.periodic(const Duration(seconds: 2), (_) {
       final last = _lastFix;
       final stale = ref.read(routingProvider).navigating &&
@@ -137,17 +130,9 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
     });
   }
 
-  /// The vector map could not be read (no internet when the app started): try again when the
-  /// driver comes back to the app. Until then the classic map is shown.
-  void _retryMapStyle() {
-    final key = _styleKey;
-    if (key != null && ref.read(vectorStyleProvider(key)).hasError) ref.invalidate(vectorStyleProvider(key));
-  }
-
   @override
   void dispose() {
     _ticker.dispose();
-    _life.dispose();
     _pose.dispose();
     _poll?.cancel();
     _staleTimer?.cancel();
@@ -546,15 +531,6 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
         (nightMode == NightMode.auto &&
             MediaQuery.platformBrightnessOf(context) == Brightness.dark);
 
-    // New vector map, or the classic tiles when chosen in Settings or when the style cannot be read.
-    final look = ref.watch(mapLookProvider);
-    final styleKey = (night: night, language: ref.watch(languageProvider));
-    _styleKey = styleKey;
-    final vector = look == MapLook.vector ? ref.watch(vectorStyleProvider(styleKey)) : null;
-    if (vector?.valueOrNull case final s?) _lastStyle = s;
-    final classic = vector == null || vector.hasError;
-    final mapStyle = classic ? null : (vector.valueOrNull ?? _lastStyle);
-
     return Scaffold(
       resizeToAvoidBottomInset: false, // the keyboard should float over the map
       body: Stack(
@@ -564,8 +540,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
             options: MapOptions(
               initialCenter: LatLng(3.1390, 101.6869), // KL
               initialZoom: 15,
-              backgroundColor: mapStyle?.background ??
-                  (night ? const Color(0xFF1B1F31) : const Color(0xFFE0E0E0)), // under tiles still loading
+              backgroundColor: night ? const Color(0xFF1B1F31) : const Color(0xFFE0E0E0), // under tiles still loading
               // Two-finger twisting is too easy to do by accident; keep the map north-up.
               interactionOptions: const InteractionOptions(
                 flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
@@ -583,20 +558,11 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
               },
             ),
             children: [
-              if (classic)
-                TileLayer(
-                  urlTemplate: _tileUrl,
-                  userAgentPackageName: 'my.jomlah',
-                  tileBuilder: night ? _nightTiles : null,
-                )
-              else if (mapStyle != null)
-                vt.VectorTileLayer(
-                  theme: mapStyle.theme,
-                  tileProviders: mapStyle.style.providers,
-                  rasterSources: mapStyle.style.rasterSources,
-                  sprites: mapStyle.style.sprites,
-                  labelMode: vt.LabelMode.screen, // street names stay upright when the map turns
-                ),
+              TileLayer(
+                urlTemplate: _tileUrl,
+                userAgentPackageName: 'my.jomlah',
+                tileBuilder: night ? _nightTiles : null,
+              ),
               // Choosing a route: every option, the chosen one on top in blue.
               if (nav.plan != null && nav.previewing)
                 PolylineLayer(
@@ -768,13 +734,13 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
               bottom: 0,
               child: NavBottomArea(onReport: _openReportSheet, onSimulate: _startSimulation, onVoice: _openVoiceReport),
             ),
-          // Map credit, required by the map's licences: kept clear of the panels and buttons.
+          // Map credit, required by OpenStreetMap: kept clear of the panels and buttons.
           Positioned(
             left: 0,
             right: 0,
             top: choosing ? topInset + 8 + 52 + 6 : null,
             bottom: choosing ? null : (driving ? TripBar.height + bottomInset + 2 : bottomInset + 4),
-            child: Center(child: _MapCredit(vector: !classic)),
+            child: const Center(child: _OsmCredit()),
           ),
           // Floating controls (hidden while choosing a route; the panel needs the room).
           if (!choosing && here != null)
@@ -952,19 +918,17 @@ class _BackToCarButton extends StatelessWidget {
       );
 }
 
-/// Credit for the map, required by OpenStreetMap's licence (and OpenFreeMap's, for the new map).
-class _MapCredit extends StatelessWidget {
-  const _MapCredit({required this.vector});
-  final bool vector;
+/// Credit for the map data, required by OpenStreetMap's licence.
+class _OsmCredit extends StatelessWidget {
+  const _OsmCredit();
 
   @override
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
         decoration: BoxDecoration(color: const Color(0xB3FFFFFF), borderRadius: BorderRadius.circular(4)),
-        child: Text(
-          vector ? kVectorCredit : '© OpenStreetMap contributors',
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 10, color: Color(0xFF3A4566), fontWeight: FontWeight.w600),
+        child: const Text(
+          '© OpenStreetMap contributors',
+          style: TextStyle(fontSize: 10, color: Color(0xFF3A4566), fontWeight: FontWeight.w600),
         ),
       );
 }
