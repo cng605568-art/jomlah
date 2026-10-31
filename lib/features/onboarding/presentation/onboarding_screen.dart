@@ -45,7 +45,10 @@ class OnboardingScreen extends ConsumerWidget {
                     _Point(icon: Icons.phone_android, title: s.safetyTitle, body: s.safetyBody),
                     _Point(icon: Icons.gavel, title: s.guidanceTitle, body: s.guidanceBody),
                     _Point(icon: Icons.lock_outline, title: s.privacy, body: s.privacyBody),
-                    if (kDemoMode) _Point(icon: Icons.science_outlined, title: s.demoTitle, body: s.demoBody),
+                    if (kDemoMode)
+                      _Point(icon: Icons.science_outlined, title: s.demoTitle, body: s.demoBody)
+                    else
+                      _Point(icon: Icons.campaign_outlined, title: s.sharedAlertsTitle, body: s.sharedAlertsBody),
                   ],
                 ),
               ),

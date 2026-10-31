@@ -1,17 +1,22 @@
 # Jomlah privacy
 
-*Last updated: 24 October 2026. This is a beta, so this page will change as the app does.*
+*Last updated: 31 October 2026. This is a beta, so this page will change as the app does.*
 
 **Ringkasan (BM):** Tiada akaun, tiada iklan, tiada analitik. Perjalanan anda tidak disimpan.
-Lokasi digunakan untuk laluan dan amaran. Perkhidmatan percuma yang kami guna (peta, carian,
-laluan) boleh nampak alamat IP dan koordinat yang anda minta. Butiran di bawah.
+Lokasi digunakan untuk laluan dan amaran. Laporan amaran (jenis, lokasi, masa) dikongsi tanpa nama
+dan dipadam sehari selepas tamat tempoh. Perkhidmatan yang kami guna (peta, carian, laluan, pelayan
+amaran) boleh nampak alamat IP dan koordinat yang anda minta. Butiran di bawah.
+
+**摘要（中文）：** 不需要账号，没有广告，没有分析工具，也不保存你的行程。位置只用于路线和警报。
+警报报告（类型、地点、时间）会匿名分享，并在过期一天后删除。我们使用的服务（地图、搜索、路线、
+警报服务器）可以看到你的 IP 地址和你查询的坐标。详情见下文（英文）。
 
 ## The short version
 
 - No account, no login, no phone number.
 - No ads, no analytics, no tracking libraries, and we do not sell data.
 - We do not store your trips or routes.
-- You can use the app without alerts being shared at all (this is how the current beta works).
+- Alerts you report are shared with other drivers without any name or phone ID attached.
 
 ## What the app does with your location
 
@@ -32,8 +37,7 @@ We do not run these services, and they have their own policies.
 | Routes | Public Valhalla demo server run by FOSSGIS | Your start and destination coordinates and your IP address when you plan or re-plan a route. After you press Jom! (and after a re-plan), the line of the chosen route is sent back twice: once to look up its speed limits and once for lane arrows |
 | Place search | Komoot's public Photon service | The text you type, your approximate location (to rank results) and your IP address |
 | Spoken directions | Your phone's own text-to-speech engine | Depends on your phone. Some engines process text online |
-
-If a later version moves to our own servers, this page will say so.
+| Shared alerts | Jomlah's alerts server, run on Cloudflare Workers (database in Asia-Pacific) | See "Alerts" below. Cloudflare handles the connection, so it sees your IP address; Jomlah's code does not store it, and request logs are switched off |
 
 ## Trip summary
 
@@ -42,13 +46,18 @@ It is not saved and not sent anywhere.
 
 ## Alerts (police, flood, pothole and so on)
 
-- **In the current beta**, alerts are samples kept in the app's memory. They are not sent anywhere
-  and disappear when you close the app.
-- **In builds connected to an alerts server**, when you report or confirm an alert we send the alert
+- **Seeing alerts:** while the app is open, it asks the alerts server about every 20 seconds for alerts
+  near you. To do that it sends your **rough area, rounded to about 1 km**, never your exact position.
+  These requests are not stored.
+- **Reporting or answering "Masih ada?":** we send the alert
   type, its location and the time, plus a random ID made by the app that **changes every 7 days**.
   The server does not store that ID. It keeps one-way scrambled values: one that changes daily (to stop
   spam) and one per alert (so a device can only vote once on it). These cannot be used to follow a
   person from alert to alert. Alerts are deleted a day after they expire.
+- **Simulasi (pretend drive):** nothing is sent. Reports and votes made during a simulation stay on
+  your phone, and the practice alerts it shows are never shared.
+- **Builds without an alerts server** (for example a copy built by someone else without one) show
+  sample alerts kept in the app's memory only.
 
 ## Kept on your phone only
 

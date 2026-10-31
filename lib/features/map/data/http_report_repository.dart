@@ -42,10 +42,11 @@ class HttpReportRepository implements ReportRepository {
 
   @override
   Future<List<Report>> nearby(LatLng center, {double radiusKm = 10}) async {
+    // Privacy: only the rough area (about 1 km) is sent; the extra kilometre makes up for it.
     final uri = Uri.parse('$baseUrl/v1/reports').replace(queryParameters: {
-      'lat': center.latitude.toStringAsFixed(5),
-      'lng': center.longitude.toStringAsFixed(5),
-      'r': radiusKm.toString(),
+      'lat': center.latitude.toStringAsFixed(2),
+      'lng': center.longitude.toStringAsFixed(2),
+      'r': (radiusKm + 1).toString(),
     });
     final res = await _send(() => _http.get(uri, headers: _headers));
     if (res.statusCode != 200) {

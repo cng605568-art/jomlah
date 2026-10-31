@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:uuid/uuid.dart';
 import '../../../core/app_info.dart';
 import '../../../core/device_id.dart';
 import '../../../core/l10n/language.dart';
@@ -95,13 +96,31 @@ class ReportsNotifier extends Notifier<ReportsState> {
 
   AppStrings get _s => ref.read(stringsProvider); // messages in the app's language
 
+  // Simulasi: the car is not really there, so nothing it does may reach other drivers. Reports and
+  // votes stay on this phone, and practice alerts are added on top of the real ones.
+  bool _simulating = false;
+  final List<Report> _practice = [];
+
+  List<Report> _withPractice(List<Report> fromServer) => [
+        for (final r in fromServer)
+          if (!r.id.startsWith(kPracticeIdPrefix)) r,
+        for (final r in _practice)
+          if (!r.isExpired) r,
+      ];
+
+  void _showLocal(String toast) => state = ReportsState(
+        reports: _withPractice(state.reports),
+        submitting: state.submitting,
+        toast: toast,
+      );
+
   /// Replaces the list with what the server says is active near [center].
   /// Quiet on failure: a missed refresh should not nag a driver.
   Future<void> refresh(LatLng center) async {
     try {
       final list = await ref.read(reportRepositoryProvider).nearby(center);
       state = ReportsState(
-        reports: list,
+        reports: _withPractice(list),
         submitting: state.submitting,
         toast: state.toast, // do not swallow a message that has not been shown yet
       );
@@ -110,6 +129,13 @@ class ReportsNotifier extends Notifier<ReportsState> {
 
   Future<void> report(ReportType type, LatLng at) async {
     if (state.submitting) return;
+    if (_simulating) {
+      final local = Report(id: '$kPracticeIdPrefix${const Uuid().v4()}', type: type, position: at, createdAt: DateTime.now());
+      _practice.add(local);
+      ref.read(votePromptProvider.notifier).markSeen(local.id);
+      _showLocal(_s.practiceReported(_s.reportLabel(type)));
+      return;
+    }
     state = state.copyWith(reports: state.reports, submitting: true);
     try {
       final saved = await ref.read(reportRepositoryProvider).submit(type, at);
@@ -135,6 +161,11 @@ class ReportsNotifier extends Notifier<ReportsState> {
 
   /// "Masih ada?" answer.
   Future<void> vote(String id, {required bool stillThere}) async {
+    if (_simulating || id.startsWith(kPracticeIdPrefix)) {
+      if (!stillThere) _practice.removeWhere((r) => r.id == id);
+      _showLocal(_s.practiceVote);
+      return;
+    }
     try {
       final updated = await ref
           .read(reportRepositoryProvider)
@@ -160,46 +191,33 @@ class ReportsNotifier extends Notifier<ReportsState> {
 
   void clearToast() => state = state.copyWith(reports: state.reports);
 
-  /// Simulasi in demo mode: a speed camera and a police alert along the pretend route, so the alert
-  /// voices can be heard without a car. Kept in this phone's memory only and never sent to a real
-  /// server: with a server (API_URL set) this does nothing.
+  /// Simulasi starts or stops. While it runs, reports and votes stay on this phone.
+  void setSimulating(bool on) {
+    _simulating = on;
+    if (!on) clearPracticeAlerts();
+  }
+
+  /// Simulasi: a speed camera and a police alert along the pretend route, so the alert voices can be
+  /// heard without a car. On this phone only, and gone when the simulation ends.
   void addPracticeAlerts(RoutePlan plan) {
-    final repo = ref.read(reportRepositoryProvider);
-    if (repo is! MockReportRepository) return;
     final now = DateTime.now();
-    final practice = [
-      for (final (kind, at) in practiceAlertSpots(plan))
-        Report(
-          id: '$kPracticeIdPrefix$kind',
-          type: kind == 'camera' ? ReportType.camera : ReportType.police,
-          position: at,
-          createdAt: now,
-        ),
-    ];
-    repo.addPractice(practice);
-    state = ReportsState(
-      reports: [
-        for (final r in state.reports)
-          if (!r.id.startsWith(kPracticeIdPrefix)) r,
-        ...practice,
-      ],
-      submitting: state.submitting,
-      toast: state.toast,
-    );
+    _practice
+      ..removeWhere((r) => r.id.startsWith('${kPracticeIdPrefix}spot-'))
+      ..addAll([
+        for (final (kind, at) in practiceAlertSpots(plan))
+          Report(
+            id: '${kPracticeIdPrefix}spot-$kind',
+            type: kind == 'camera' ? ReportType.camera : ReportType.police,
+            position: at,
+            createdAt: now,
+          ),
+      ]);
+    state = ReportsState(reports: _withPractice(state.reports), submitting: state.submitting, toast: state.toast);
   }
 
   void clearPracticeAlerts() {
-    final repo = ref.read(reportRepositoryProvider);
-    if (repo is! MockReportRepository) return;
-    repo.removePractice();
-    state = ReportsState(
-      reports: [
-        for (final r in state.reports)
-          if (!r.id.startsWith(kPracticeIdPrefix)) r,
-      ],
-      submitting: state.submitting,
-      toast: state.toast,
-    );
+    _practice.clear();
+    state = ReportsState(reports: _withPractice(state.reports), submitting: state.submitting, toast: state.toast);
   }
 }
 

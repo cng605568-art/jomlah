@@ -19,7 +19,7 @@ abstract class ReportRepository {
   Future<Report?> vote(String id, {required bool stillThere});
 }
 
-/// Ids of the practice alerts Simulasi adds in demo mode.
+/// Ids of alerts that exist only on this phone, during Simulasi.
 const kPracticeIdPrefix = 'practice-';
 
 /// Demo mode: in memory, used when the app is built without API_URL.
@@ -38,14 +38,6 @@ class MockReportRepository implements ReportRepository {
       createdAt: DateTime.now().subtract(const Duration(hours: 20)),
     ),
   ];
-
-  /// Simulasi: practice alerts placed along the pretend route (demo mode only).
-  void addPractice(List<Report> reports) {
-    removePractice();
-    _store.addAll(reports);
-  }
-
-  void removePractice() => _store.removeWhere((r) => r.id.startsWith(kPracticeIdPrefix));
 
   @override
   Future<Report> submit(ReportType type, LatLng at) async {

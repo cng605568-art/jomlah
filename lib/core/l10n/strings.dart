@@ -130,6 +130,23 @@ class AppStrings {
   String get voteConfirmed => _t(('Terima kasih! Laporan disahkan.', 'Thanks! Report confirmed.', '谢谢！已确认。'));
   String get voteGone => _t(('Terima kasih! Kami tandakan dah tak ada.', "Thanks! We'll mark it as gone.", '谢谢！已标记为没有了。'));
   String get voteFailed => _t(('Undi tak masuk. Cuba lagi.', "Vote didn't go through. Try again.", '投票失败，请再试一次。'));
+  String practiceReported(String what) => fill(
+        _t((
+          'Simulasi: {what} dilaporkan di telefon ini sahaja.',
+          'Simulation: {what} reported on this phone only.',
+          '模拟：{what}只在这台手机上报告。',
+        )),
+        {'what': what},
+      );
+  String get practiceVote => _t(('Simulasi: undi tidak dihantar.', 'Simulation: vote not sent.', '模拟：投票没有发送。'));
+  String get sharedAlertsTitle => _t(('Amaran dikongsi', 'Shared alerts', '共享警报'));
+  String get sharedAlertsBody => _t((
+        'Laporan anda (jenis, lokasi dan masa) dikongsi dengan pemandu lain tanpa nama, dan dipadam sehari '
+            'selepas tamat tempoh. Jomlah tidak simpan ID telefon atau alamat IP anda.',
+        'Your reports (type, place and time) are shared with other drivers without your name, and deleted '
+            "a day after they expire. Jomlah does not store your phone's ID or your IP address.",
+        '你的报告（类型、地点和时间）会匿名分享给其他司机，并在过期一天后删除。Jomlah 不保存你的手机 ID 或 IP 地址。',
+      ));
   String stillThere(String what) => fill(_t(('Masih ada {what}?', '{what} still there?', '{what}还在吗？')), {'what': what});
   String get yesStillThere => _t(('Ada', 'Yes', '还在'));
   String get gone => _t(('Tak ada', 'Gone', '没了'));
