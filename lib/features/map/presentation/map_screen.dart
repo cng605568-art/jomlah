@@ -8,9 +8,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import '../../../core/app_info.dart';
 import '../../../core/app_theme.dart';
 import '../../../core/geo.dart';
 import '../../../core/l10n/language.dart';
+import '../../../core/prefs.dart';
 import '../../routing/application/routing_providers.dart';
 import '../../routing/application/speed_limit_providers.dart';
 import '../../routing/domain/route_plan.dart';
@@ -24,11 +26,13 @@ import '../../settings/presentation/settings_button.dart';
 import '../../voice/application/voice_providers.dart';
 import '../application/map_style_provider.dart';
 import '../application/providers.dart';
+import '../application/traffic_providers.dart';
 import '../domain/car_motion.dart';
 import '../domain/gps_filter.dart';
 import '../domain/report.dart';
 import '../domain/simulated_drive.dart';
 import '../domain/jam_detector.dart';
+import '../domain/traffic.dart';
 import '../domain/trip_stats.dart';
 import 'arrival_sheet.dart';
 import 'car_marker.dart';
@@ -86,6 +90,12 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
   SimulatedDrive? _sim; // a pretend drive is running (testing and demos, no car needed)
   Timer? _simTimer;
 
+  // Live traffic: readings picked while driving, average speeds fetched every minute, and the slow
+  // parts of the route ahead worked out from them on every fix.
+  final _sampler = SpeedSampler();
+  Timer? _trafficTimer;
+  List<SlowStretch> _slow = const [];
+
   double _screenHeight = 800; // logical pixels, remembered from build() for the frame loop
   bool _follow = true;
   bool _movedToFirstFix = false;
@@ -123,6 +133,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
     _staleTimer?.cancel();
     _jamTimer?.cancel();
     _simTimer?.cancel();
+    _trafficTimer?.cancel();
     WakelockPlus.disable();
     super.dispose();
   }
@@ -247,6 +258,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
     });
 
     ref.read(voiceFeedProvider).onFix(at, speedMps: filtered.speedMps, headingDeg: snap?.bearingDeg ?? heading);
+    if (plan != null && snap != null) _trafficOnFix(plan, snap, filtered.speedMps);
     _stats.add(at, filtered.speedMps);
     _maybeAskAboutJam(at, filtered.speedMps);
     _maybeWarnSpeeding(filtered.speedMps);
@@ -266,6 +278,71 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
       ref.read(reportsProvider.notifier).refresh(at);
     }
   }
+
+  /// Live traffic on every fix while driving: share a reading now and then (never during Simulasi,
+  /// never when switched off), work out the slow parts ahead, and warn about heavy traffic once.
+  void _trafficOnFix(RoutePlan plan, RouteSnap snap, double speedMps) {
+    final now = DateTime.now();
+    if (_sim == null && ref.read(trafficSharingProvider)) {
+      _sampler.add(
+        now: now,
+        at: snap.point,
+        headingDeg: snap.bearingDeg,
+        kmh: speedMps * 3.6,
+        alongM: snap.alongM,
+        remainingM: plan.totalM - snap.alongM,
+      );
+      final batch = _sampler.takeBatch(now);
+      if (batch.isNotEmpty) ref.read(trafficRepositoryProvider).send(batch);
+    }
+    final limits = ref.read(speedLimitsProvider).valueOrNull;
+    _slow = slowStretches(
+      plan,
+      snap.alongM,
+      ref.read(trafficProvider),
+      limitAt: limits == null || limits.isEmpty ? null : limits.limitAt,
+    );
+    for (final st in _slow) {
+      final ahead = st.startM - snap.alongM;
+      if (st.level == TrafficLevel.heavy && ahead > 50 && ahead < 1500) {
+        ref.read(voiceEngineProvider).alert('traffic:${(st.startM / 200).round()}', Cue.jam, ahead);
+        break;
+      }
+    }
+  }
+
+  void _startTraffic() {
+    _trafficTimer?.cancel();
+    void refresh() {
+      final here = _here;
+      if (here != null) ref.read(trafficProvider.notifier).refresh(here);
+    }
+
+    refresh();
+    _trafficTimer = Timer.periodic(const Duration(minutes: 1), (_) => refresh());
+  }
+
+  void _stopTraffic() {
+    _trafficTimer?.cancel();
+    _trafficTimer = null;
+    _sampler.reset();
+    _slow = const [];
+    ref.read(trafficProvider.notifier).clear();
+  }
+
+  /// The first trip with live traffic says once that speeds are shared, and where to turn it off.
+  void _maybeShowTrafficNotice() {
+    final prefs = ref.read(sharedPrefsProvider);
+    if (!ref.read(trafficSharingProvider) || kDemoMode || (prefs.getBool(_trafficNoticeKey) ?? false)) return;
+    prefs.setBool(_trafficNoticeKey, true);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      duration: const Duration(seconds: 8),
+      content: Text(context.s.trafficNotice),
+      action: SnackBarAction(label: context.s.ok, onPressed: () {}),
+    ));
+  }
+
+  static const _trafficNoticeKey = 'traffic.noticeSeen';
 
   /// Offers a one-tap "Jem Teruk" report after a couple of minutes of crawling.
   void _maybeAskAboutJam(LatLng at, double speedMps) {
@@ -352,7 +429,12 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
     // Keep the screen on only while a trip is in progress.
     ref.listen(routingProvider.select((s) => s.navigating), (_, active) {
       WakelockPlus.toggle(enable: active);
+      if (active) {
+        _startTraffic();
+        _maybeShowTrafficNotice();
+      }
       if (!active) {
+        _stopTraffic();
         _resetRotation(); // trip over: back to north-up
         _stopSimulation();
         _speedWarner.reset();
@@ -478,8 +560,19 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
                     final points = (pose != null && along != null && identical(_motion.route, plan.shape))
                         ? remainingFromDistance(plan, along, from: pose.position)
                         : remainingShape(plan.shape, nav.segment, from: pose?.position ?? here);
+                    // Slow parts ahead, painted over the blue line (never behind the car).
+                    final from = along ?? (plan.totalM - nav.remainingM);
+                    final traffic = [
+                      for (final st in _slow)
+                        if (st.endM > from)
+                          Polyline(
+                            points: shapeBetween(plan, math.max(st.startM, from), st.endM),
+                            strokeWidth: 8,
+                            color: st.level == TrafficLevel.heavy ? AppColors.danger : AppColors.warning,
+                          ),
+                    ];
                     return PolylineLayer(
-                      polylines: [if (points.length >= 2) _routeLine(points)],
+                      polylines: [if (points.length >= 2) _routeLine(points), ...traffic],
                     );
                   },
                 ),

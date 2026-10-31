@@ -60,9 +60,26 @@ It is not saved and not sent anywhere.
 - **Builds without an alerts server** (for example a copy built by someone else without one) show
   sample alerts kept in the app's memory only.
 
+## Live traffic (speeds)
+
+- **While navigating** (only during a trip, never while just looking at the map), the app shares a
+  speed reading about every 30 seconds, sent in batches every 2 minutes, so everyone can see where
+  the road is slow.
+- Each reading is only **a ~165 m stretch of road, one of 8 directions and the speed**. Your exact
+  position, the time on your phone and any ID are not included. (The random ID described above is
+  sent alongside, only so the server can stop one phone from flooding it. It is not stored.)
+- The **first and last 500 m of every trip are never shared**, so where you start and end, such as
+  your home or work, is never sent.
+- The server **does not keep readings**. It only adds each one to a 5-minute average for that stretch,
+  so readings cannot be put back together into a trip. The averages are deleted after **one hour**.
+  A stretch is only shown to others once at least two readings agree.
+- **Simulasi** never shares speeds.
+- **Turn it off** any time: Settings > Live traffic > "Share my speed anonymously". You still see
+  traffic from others.
+
 ## Kept on your phone only
 
-Your saved Home and Work places and recent destinations, your voice choice, the mute setting, your vehicle type, the toll preference, the night-map setting, the random ID, and whether you have seen the welcome screen.
+Your saved Home and Work places and recent destinations, your language, your voice choice, the mute setting, your vehicle type, the toll preference, the night-map setting, the live-traffic setting, the random ID, and whether you have seen the welcome screen.
 Uninstalling the app removes all of it.
 
 ## Your choices

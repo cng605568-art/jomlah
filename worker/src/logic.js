@@ -18,6 +18,7 @@ export const LIMITS = {
   reportsPerDevice: 10, // one phone
   reportsPerArea: 30, // one ~11 km square, all phones together (blunts floods of fake reports)
   votesPerDevice: 60,
+  speedBatchesPerDevice: 20, // the app sends one batch every 2 minutes while navigating
 };
 
 /** The same alert type within this distance is the same alert: a confirmation, not a new one. */
@@ -134,4 +135,44 @@ export function distanceM(lat1, lng1, lat2, lng2) {
   const dLng = (lng2 - lng1) * rad;
   const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLng / 2) ** 2;
   return 2 * 6_371_000 * Math.asin(Math.sqrt(a));
+}
+
+// ---- Live traffic ----
+
+/** Size of a traffic stretch: a square of 0.0015 degrees (about 165 m). */
+export const SEG_DEG = 0.0015;
+/** A stretch's speed is only shown once at least this many readings agree (one car is not traffic). */
+export const MIN_READINGS = 2;
+export const SPEED_BUCKET_MS = 5 * 60 * 1000;
+export const TRAFFIC_WINDOW_MS = 15 * 60 * 1000;
+export const MAX_SAMPLES = 10;
+
+/** 0 = north, 1 = north-east ... 7 = north-west. */
+export const dirOf = (headingDeg) => Math.round((((headingDeg % 360) + 360) % 360) / 45) % 8;
+
+/** The stretch a reading belongs to: its key, centre and direction. */
+export function segmentOf(lat, lng, headingDeg) {
+  const row = Math.floor(lat / SEG_DEG);
+  const col = Math.floor(lng / SEG_DEG);
+  const dir = dirOf(headingDeg);
+  const cLat = (row + 0.5) * SEG_DEG;
+  const cLng = (col + 0.5) * SEG_DEG;
+  return { seg: `${row}:${col}:${dir}`, lat: +cLat.toFixed(6), lng: +cLng.toFixed(6), dir, cell: cellOf(cLat, cLng) };
+}
+
+/** {samples: [{lat, lng, heading, kmh}, ...]}: 1 to 10 readings, each in Malaysia and plausible. */
+export function validateSpeeds(body) {
+  const samples = body?.samples;
+  if (!Array.isArray(samples) || samples.length === 0 || samples.length > MAX_SAMPLES) {
+    return { ok: false, error: `samples must be a list of 1 to ${MAX_SAMPLES} readings.` };
+  }
+  const out = [];
+  for (const s of samples) {
+    const { lat, lng, heading, kmh } = s ?? {};
+    if (![lat, lng, heading, kmh].every(isNum)) return { ok: false, error: 'Each reading needs lat, lng, heading and kmh.' };
+    if (!inMalaysia(lat, lng)) return { ok: false, error: 'Reading outside Malaysia.' };
+    if (heading < 0 || heading > 360 || kmh < 0 || kmh > 200) return { ok: false, error: 'Reading out of range.' };
+    out.push({ lat, lng, heading, kmh });
+  }
+  return { ok: true, value: out };
 }

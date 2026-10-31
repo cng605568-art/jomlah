@@ -4,14 +4,17 @@
 //   GET  /v1/reports?lat=&lng=&r=        live alerts near a point (r in km, default 10, max 25)
 //   POST /v1/reports                     {type, lat, lng}            new alert (or confirms a twin)
 //   POST /v1/reports/:id/vote            {vote: "confirm" | "deny"}  "Masih ada?"
+//   POST /v1/speeds                      {samples: [{lat, lng, heading, kmh}]}  live traffic readings
+//   GET  /v1/traffic?lat=&lng=&r=        average speeds on stretches near a point (last 15 min)
 //
 // Every write needs an X-Device-Id header: the app's random, weekly-changing id. It is never
 // stored; see logic.js. Same API as the self-hosted server in server/api, so the app does not care
 // which one it talks to.
 
 import {
-  applyVote, cellOf, cellsAround, distanceM, LIMITS, parseNearbyQuery, REPORT_TYPES,
-  reporterHash, SAME_ALERT_M, validateNewReport, validDeviceId, validReportId, voterHash,
+  applyVote, cellOf, cellsAround, distanceM, LIMITS, MIN_READINGS, parseNearbyQuery, REPORT_TYPES,
+  reporterHash, SAME_ALERT_M, segmentOf, SPEED_BUCKET_MS, TRAFFIC_WINDOW_MS, validateNewReport,
+  validateSpeeds, validDeviceId, validReportId, voterHash,
 } from './logic.js';
 
 const COLUMNS = 'id, type, lat, lng, created_at, expires_at, confirms, denies';
@@ -147,13 +150,61 @@ async function vote(request, env, id, now) {
   return json({ report: toJson(row), already_voted: alreadyVoted });
 }
 
-/** Privacy and housekeeping: alerts go a day after they expire (their votes with them). */
+/** Live traffic readings. Each one only adds to a 5-minute average for its stretch; nothing about
+ * the phone, or which readings came together, is kept. */
+async function speeds(request, env, now) {
+  const deviceId = request.headers.get('x-device-id');
+  if (!validDeviceId(deviceId)) return json({ error: 'X-Device-Id header is required.' }, 400);
+  const v = validateSpeeds(await readJson(request));
+  if (!v.ok) return json({ error: v.error }, 400);
+  const db = env.DB;
+  const who = await reporterHash(env.HMAC_SECRET, deviceId, now);
+  if (!(await underLimit(db, `s:${who}`, LIMITS.speedBatchesPerDevice, now))) {
+    return json({ error: 'Too many readings. Try again soon.' }, 429);
+  }
+  const minute = Math.floor(now / SPEED_BUCKET_MS) * SPEED_BUCKET_MS;
+  const upsert = db.prepare(
+    `INSERT INTO speeds (seg, cell, minute, lat, lng, dir, sum_kmh, n) VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+     ON CONFLICT (seg, minute) DO UPDATE SET sum_kmh = sum_kmh + excluded.sum_kmh, n = n + 1`,
+  );
+  await db.batch(
+    v.value.map((r) => {
+      const s = segmentOf(r.lat, r.lng, r.heading);
+      return upsert.bind(s.seg, s.cell, minute, s.lat, s.lng, s.dir, r.kmh);
+    }),
+  );
+  return json({ ok: true, accepted: v.value.length });
+}
+
+/** Average speeds near a point over the last 15 minutes, only where at least two readings agree. */
+async function traffic(url, env, now) {
+  const q = parseNearbyQuery(url.searchParams);
+  if (!q.ok) return json({ error: q.error }, 400);
+  const { lat, lng, radiusM } = q.value;
+  const cells = cellsAround(lat, lng, radiusM);
+  const { results } = await env.DB
+    .prepare(
+      `SELECT seg, lat, lng, dir, SUM(sum_kmh) AS total, SUM(n) AS n FROM speeds
+       WHERE cell IN (${cells.map(() => '?').join(',')}) AND minute >= ?
+       GROUP BY seg HAVING SUM(n) >= ? LIMIT 5000`,
+    )
+    .bind(...cells, now - TRAFFIC_WINDOW_MS, MIN_READINGS)
+    .all();
+  const segments = results
+    .filter((r) => distanceM(lat, lng, r.lat, r.lng) <= radiusM)
+    .map((r) => ({ lat: r.lat, lng: r.lng, dir: r.dir, kmh: Math.round(r.total / r.n), n: r.n }));
+  return json({ segments: segments.slice(0, 2000) });
+}
+
+/** Privacy and housekeeping: alerts go a day after they expire (their votes with them); traffic
+ * averages go after an hour. */
 export async function cleanup(db, now = Date.now()) {
   const cutoff = now - 24 * 3600 * 1000;
   await db.batch([
     db.prepare('DELETE FROM votes WHERE report_id IN (SELECT id FROM reports WHERE expires_at < ?)').bind(cutoff),
     db.prepare('DELETE FROM reports WHERE expires_at < ?').bind(cutoff),
     db.prepare('DELETE FROM hits WHERE at < ?').bind(now - 3600 * 1000),
+    db.prepare('DELETE FROM speeds WHERE minute < ?').bind(now - 3600 * 1000),
   ]);
 }
 
@@ -167,10 +218,12 @@ export default {
         return json({ ok: true, ready: Boolean(env.HMAC_SECRET) });
       }
       if (request.method === 'GET' && path === '/v1/reports') return await nearby(url, env, now);
+      if (request.method === 'GET' && path === '/v1/traffic') return await traffic(url, env, now);
 
       const writes = request.method === 'POST';
       if (writes && !env.HMAC_SECRET) return json({ error: 'Server is still being set up.' }, 503);
       if (writes && path === '/v1/reports') return await create(request, env, now);
+      if (writes && path === '/v1/speeds') return await speeds(request, env, now);
       const m = path.match(/^\/v1\/reports\/([^/]+)\/vote$/);
       if (writes && m) return await vote(request, env, m[1], now);
 

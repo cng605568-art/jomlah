@@ -317,6 +317,21 @@ and line. It does not build an APK; `main` still runs the full build, tests incl
 - The first-run screen key moved to `onboarded.v2`, so everyone sees the new "Shared alerts" note once.
 - Moderation and privacy notes: `worker/README.md`.
 
+## Step 18: live traffic
+- Phone (`lib/features/map/domain/traffic.dart`): `SpeedSampler` takes a reading every 30 s while
+  navigating (not in Simulasi, not when switched off in Settings), never in the first or last 500 m of
+  a trip, rounds it to its stretch (0.0015-degree square + one of 8 directions) and sends batches every
+  2 minutes (`HttpTrafficRepository`). `trafficProvider` fetches average speeds within ~11 km every
+  minute on a trip. `slowStretches` walks the route ahead every 40 m, looks up the stretch for our
+  direction and compares the crowd speed with the speed limit there (or the route's own average):
+  orange when under half and under 40 km/h, red when under a quarter or 10 km/h with at least three
+  readings. Red within 1.5 km ahead is spoken once (Cue.jam). Overlays are painted on the route line.
+- Server (`worker/`): `POST /v1/speeds` adds each reading to a 5-minute average per stretch (readings
+  themselves are not kept), `GET /v1/traffic` returns averages from the last 15 minutes where at least
+  two readings agree, and the hourly cleanup deletes averages after an hour (migration 0002).
+- The stretch rules exist twice (Dart and JS); both test files check the same example key.
+- It needs many drivers on the same roads before colours appear; with a few testers it stays quiet.
+
 ## Publishing a release
 - Write `release-notes/<tag>.md` (first line `# Title`, then the notes) and commit it to `main`.
 - Then on GitHub: Releases > Draft a new release > type the tag (e.g. `v1.0.4(BETA)`), "Create new tag

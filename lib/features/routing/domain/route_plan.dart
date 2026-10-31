@@ -129,6 +129,18 @@ LatLng pointAlong(RoutePlan plan, double alongM) {
   );
 }
 
+/// The part of [plan] between [startM] and [endM] metres from its start (for painting a stretch).
+List<LatLng> shapeBetween(RoutePlan plan, double startM, double endM) {
+  if (endM <= startM || plan.shape.length < 2) return const [];
+  final cum = plan.cumulativeM;
+  return [
+    pointAlong(plan, startM),
+    for (var i = 0; i < plan.shape.length; i++)
+      if (cum[i] > startM && cum[i] < endM) plan.shape[i],
+    pointAlong(plan, endM),
+  ];
+}
+
 /// Where Simulasi puts its practice alerts: a speed camera a third of the way and police two
 /// thirds of the way, as long as the route is long enough to hear them (1.5 km or more).
 List<(String kind, LatLng at)> practiceAlertSpots(RoutePlan plan) {

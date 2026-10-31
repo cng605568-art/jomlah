@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/app_info.dart';
 import '../../../core/l10n/language.dart';
 import '../../map/application/map_style_provider.dart';
+import '../../map/application/traffic_providers.dart';
 import '../../routing/application/route_prefs_provider.dart';
 import '../../routing/domain/route_prefs.dart';
 import '../../voice/application/voice_providers.dart';
@@ -147,6 +148,15 @@ class SettingsButton extends ConsumerWidget {
                             ref.read(nightModeProvider.notifier).set(s.first),
                       ),
                     ),
+                    if (!kDemoMode) ...[
+                      _Heading(s.liveTraffic),
+                      SwitchListTile(
+                        title: Text(s.shareTraffic),
+                        subtitle: Text(s.shareTrafficHint),
+                        value: ref.watch(trafficSharingProvider),
+                        onChanged: ref.read(trafficSharingProvider.notifier).set,
+                      ),
+                    ],
                     _Heading(s.voice),
                     SwitchListTile(
                       title: Text(s.muteVoice),
