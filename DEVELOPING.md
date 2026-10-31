@@ -332,6 +332,19 @@ and line. It does not build an APK; `main` still runs the full build, tests incl
 - The stretch rules exist twice (Dart and JS); both test files check the same example key.
 - It needs many drivers on the same roads before colours appear; with a few testers it stays quiet.
 
+## Step 19: voice reports
+- `speech_to_text` uses the phone's own recogniser (`SttSpeechInput`, behind the `SpeechInput` seam
+  so tests can pretend to speak). Bluetooth is switched off in its options, so no extra permission.
+  The manifest patch adds `RECORD_AUDIO` and the `android.speech.RecognitionService` query.
+- `reportFromSpeech` (voice/domain/voice_command.dart) checks Malay, English and Chinese words together
+  on the recogniser's best guess and then its alternatives: earliest alert word wins, longer phrases
+  beat their parts, Latin words must be whole words, Chinese words can be anywhere. "batal" cancels.
+  Add words to `_words` when testers report misses.
+- `VoiceReportSheet` listens once (8 s max), shows the words and what it understood, then closes with
+  the alert; otherwise "try again" or "pick one" (the grid). MapScreen reports it like the grid would
+  (Simulasi keeps it local) and says "reported" in the app's language (`VoiceEngine.say`).
+- A wake word ("Jom...") is not possible for free: Android's recogniser cannot listen all the time.
+
 ## Publishing a release
 - Write `release-notes/<tag>.md` (first line `# Title`, then the notes) and commit it to `main`.
 - Then on GitHub: Releases > Draft a new release > type the tag (e.g. `v1.0.4(BETA)`), "Create new tag

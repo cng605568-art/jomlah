@@ -66,6 +66,9 @@ sit with them for the five steps. Only install apps from links you trust.
 - **Shared alerts:** report police, speed cameras, floods, potholes, broken-down lorries, jams and
   accidents with the orange button, and everyone nearby sees them. Passing an alert asks "Masih ada?";
   your answer keeps it or removes it. No account, and no phone ID is stored (see PRIVACY.md)
+- **Voice reports:** while driving, tap the microphone and say what you see ("ada polis", "banjir",
+  "塞车", "accident"); the app reports it and says so out loud. Malay, English and Chinese words all
+  work, mixed too
 
 ## What does not work yet
 

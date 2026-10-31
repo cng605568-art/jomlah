@@ -37,6 +37,7 @@ We do not run these services, and they have their own policies.
 | Routes | Public Valhalla demo server run by FOSSGIS | Your start and destination coordinates and your IP address when you plan or re-plan a route. After you press Jom! (and after a re-plan), the line of the chosen route is sent back twice: once to look up its speed limits and once for lane arrows |
 | Place search | Komoot's public Photon service | The text you type, your approximate location (to rank results) and your IP address |
 | Spoken directions | Your phone's own text-to-speech engine | Depends on your phone. Some engines process text online |
+| Voice reports | Your phone's own speech recognition (on most phones, Google's) | Only after you tap the microphone, for up to about 8 seconds: what you say. Jomlah only gets the words back, uses them to pick the alert, and does not keep them or the sound |
 | Shared alerts | Jomlah's alerts server, run on Cloudflare Workers (database in Asia-Pacific) | See "Alerts" below. Cloudflare handles the connection, so it sees your IP address; Jomlah's code does not store it, and request logs are switched off |
 
 ## Trip summary
