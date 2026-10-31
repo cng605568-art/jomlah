@@ -373,6 +373,21 @@ and line. It does not build an APK; `main` still runs the full build, tests incl
 - Builds without a version tag ("dev build N") and builds without `--dart-define=REPO=owner/name`
   (local builds, tests) never check. build-apk.yml passes `REPO`.
 
+## Step 22: following the car along the route (v1.0.9 fix)
+- Tester report: crawling near the destination the car jumped around and sat beside the road. Cause:
+  below 3 m/s no heading was passed, and the matcher looked up to 400 segments ahead, so a noisy fix
+  could match a later part of the route a few metres away (the way back after a U-turn, a loop round
+  the block). The new map was not the cause: CI drew a real Valhalla route over both maps at z16 to
+  z20.6 and it sat on the roads.
+- RoutingNotifier now follows the route in order (`_alongM`): it looks 20 m behind and only as far
+  ahead as the car could have driven since the last fix (50 m + 45 m/s). A far jump (GPS gap, a real
+  shortcut) is taken only when two fixes in a row agree. The first fix of a trip or a new route
+  searches everywhere.
+- MapScreen keeps the last moving heading (`_travelHeading`) instead of dropping it when slow.
+- Snapping has hysteresis (`snapJoinM` 30 m, `snapKeepM` 45 m) and keeps working after arriving.
+- Off the route the blue line starts at `closestOnSegment` with a dotted line from the car.
+- Tests: snap_test.dart "following the car along the route".
+
 ## Publishing a release
 - Write `release-notes/<tag>.md` (first line `# Title`, then the notes) and commit it to `main`.
 - Then on GitHub: Releases > Draft a new release > type the tag (e.g. `v1.0.4(BETA)`), "Create new tag
