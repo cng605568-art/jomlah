@@ -345,6 +345,23 @@ and line. It does not build an APK; `main` still runs the full build, tests incl
   (Simulasi keeps it local) and says "reported" in the app's language (`VoiceEngine.say`).
 - A wake word ("Jom...") is not possible for free: Android's recogniser cannot listen all the time.
 
+## Step 20: vector map (OpenFreeMap)
+- `flutter_map` 8 plus `flutter_map_vector_tiles` (MapLibre styles drawn on the phone, labels in screen
+  space so they stay upright when the map turns). Styles come from OpenFreeMap: free, no key, no
+  limits. Day `liberty`, night `fiord` (`dark` was tried: too dim to tell roads apart). See
+  map/application/vector_style.dart; `--dart-define=MAP_STYLE_BASE=...` points at a self-hosted copy.
+- Every OpenFreeMap style reads with the same theme id (`style@8#`), and the layer caches finished
+  tiles by that id, so `MapStyle` gives each style + label language its own id. Without it the night
+  map showed day tiles in our CI test.
+- Labels use `name:<language>` where OpenStreetMap has it (lots of `name:zh` around KL), else the
+  local name.
+- Fallback: Settings > Gaya peta > Klasik (the old OSM raster tiles with the night filter), and
+  automatically when the style cannot be read; MapScreen retries when the app comes back to the front.
+- Checked in CI with real network (LiveTestWidgetsFlutterBinding, a probe test not kept in the repo):
+  the app's map screen draws liberty, fiord and Chinese labels, and Klasik still loads. flutter_map's
+  own tile cache needs `path_provider`; without it (plain widget tests) classic tiles never appear.
+- Map labels use the phone's default font; widget tests show them as boxes, that is expected.
+
 ## Publishing a release
 - Write `release-notes/<tag>.md` (first line `# Title`, then the notes) and commit it to `main`.
 - Then on GitHub: Releases > Draft a new release > type the tag (e.g. `v1.0.4(BETA)`), "Create new tag

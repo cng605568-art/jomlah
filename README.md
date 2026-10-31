@@ -46,6 +46,9 @@ sit with them for the five steps. Only install apps from links you trust.
 - An arrival summary (distance, time, average and top speed) with one-tap save as Home or Work
 - After two minutes of crawling, a "Nampak macam jem" prompt so you can report traffic with one tap
 - Turn-by-turn with next-turn card, automatic reroute, current speed, and night map
+- A sharp vector map from OpenFreeMap with a proper dark map at night; street names stay upright
+  when the map turns, and in Chinese where OpenStreetMap has the Chinese name. The old map is
+  still there as "Klasik" in Settings, and comes back by itself if the new one cannot load
 - A speed limit sign next to your speed where OpenStreetMap knows the limit; your speed turns red
   when you are 5 km/j or more over it, and the voice reminds you once per stretch of road
 - Highway exit signs on the turn card (exit number and where it leads), and a "Tol" tag on route options that use toll roads, where OpenStreetMap has the data
@@ -69,10 +72,13 @@ sit with them for the five steps. Only install apps from links you trust.
 - **Voice reports:** while driving, tap the microphone and say what you see ("ada polis", "banjir",
   "塞车", "accident"); the app reports it and says so out loud. Malay, English and Chinese words all
   work, mixed too
+- **Live traffic:** while you drive, phones share their speed anonymously, and slow parts of your
+  route turn orange or red. It needs other Jomlah drivers on the same road, so it is mostly empty
+  for now. Turn sharing off in Settings (see PRIVACY.md)
 
 ## What does not work yet
 
-- No live traffic, no offline maps, no CarPlay or Android Auto
+- No offline maps, no CarPlay or Android Auto. Live traffic only shows where other Jomlah drivers have been
 - Lane arrows only appear where OpenStreetMap has lane markings; many town junctions have none yet
 - Speed limits are missing on many roads, because OpenStreetMap does not have them everywhere yet.
   Where the limit is unknown, no sign is shown (the app never guesses). Road signs always win
