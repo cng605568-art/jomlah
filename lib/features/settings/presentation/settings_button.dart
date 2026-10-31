@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/app_info.dart';
 import '../../../core/l10n/language.dart';
 import '../../map/application/map_style_provider.dart';
+import '../../update/application/update_providers.dart';
 import '../../map/application/traffic_providers.dart';
 import '../../routing/application/route_prefs_provider.dart';
 import '../../routing/domain/route_prefs.dart';
@@ -212,6 +213,13 @@ class SettingsButton extends ConsumerWidget {
                         subtitle: Text(s.opensOnGithub),
                         onTap: () => _open(kFeedbackUrl),
                       ),
+                    if (ref.watch(updateProvider).valueOrNull case final update?)
+                      ListTile(
+                        leading: const Icon(Icons.system_update_rounded, color: AppColors.go),
+                        title: Text(s.updateAvailable(update.tag)),
+                        subtitle: Text(s.updateHint),
+                        onTap: openDownloadPage,
+                      ),
                     ListTile(
                       leading: const Icon(Icons.info_outline),
                       title: Text('Jomlah $kAppVersion'),
@@ -219,6 +227,13 @@ class SettingsButton extends ConsumerWidget {
                         kDemoMode ? s.demoMode : s.connectedToAlerts,
                       ),
                     ),
+                    if (kRepo.isNotEmpty)
+                      SwitchListTile(
+                        title: Text(s.checkUpdates),
+                        subtitle: Text(s.checkUpdatesHint),
+                        value: ref.watch(updateCheckProvider),
+                        onChanged: ref.read(updateCheckProvider.notifier).set,
+                      ),
                   ],
                 ),
               ),

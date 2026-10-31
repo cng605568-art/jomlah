@@ -169,6 +169,7 @@ jobs:
           if [ -n "$API_URL" ]; then args+=("--dart-define=API_URL=$API_URL"); fi
           args+=("--dart-define=FEEDBACK_URL=https://github.com/$REPO/issues")
           args+=("--dart-define=PRIVACY_URL=https://github.com/$REPO/blob/main/PRIVACY.md")
+          args+=("--dart-define=REPO=$REPO") # where the app looks for newer versions
 
           # Version shown in Settings: the tag on release builds ("v1.0.4(BETA)"), otherwise
           # "dev build N" where N is this run's number on the Actions page. Android's version code

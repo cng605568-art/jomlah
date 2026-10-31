@@ -277,6 +277,20 @@ class AppStrings {
   String get opensOnGithub => _t(('Dibuka di GitHub', 'Opens on GitHub', '在 GitHub 打开'));
   String get demoMode => _t(('Mod demo: amaran contoh sahaja', 'Demo mode: sample alerts only', '演示模式：只有示例警报'));
   String get connectedToAlerts => _t(('Disambung ke pelayan amaran', 'Connected to the alerts server', '已连接警报服务器'));
+  String updateAvailable(String version) => fill(
+      _t(('Versi baharu {v} sudah ada', 'New version {v} is out', '新版本 {v} 已推出')), {'v': version});
+  String get download => _t(('Muat turun', 'Download', '下载'));
+  String get updateHint => _t((
+        'Tekan untuk muat turun. Pasang terus atas versi ini, tak perlu buang.',
+        'Tap to download. Install it over this version, no need to uninstall.',
+        '点这里下载。直接安装在这个版本上面，不需要先卸载。',
+      ));
+  String get checkUpdates => _t(('Semak versi baharu', 'Check for new versions', '检查新版本'));
+  String get checkUpdatesHint => _t((
+        'Dua kali sehari paling banyak, di GitHub. Tiada maklumat anda dihantar.',
+        'At most twice a day, on GitHub. Nothing about you is sent.',
+        '每天最多两次，在 GitHub 上检查。不会发送你的任何资料。',
+      ));
 
   // ---- First run ----
   String get onboardingTitle => 'Jom! 🚗';

@@ -23,6 +23,8 @@ import '../../search/application/search_providers.dart';
 import '../../search/domain/place.dart';
 import '../../voice/domain/voice_pack.dart';
 import '../../search/presentation/search_box.dart';
+import '../../update/application/update_providers.dart';
+import '../../update/domain/app_version.dart';
 import '../../settings/presentation/settings_button.dart';
 import '../../voice/application/voice_providers.dart';
 import '../../voice/presentation/voice_report_sheet.dart';
@@ -361,6 +363,20 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
 
   static const _trafficNoticeKey = 'traffic.noticeSeen';
 
+  /// A newer version is on GitHub: say so once per version, and never while a trip is running
+  /// (then it waits for the next app start). Settings keeps a "Download" row until it is installed.
+  void _offerUpdate(AvailableUpdate u) {
+    final prefs = ref.read(sharedPrefsProvider);
+    if (prefs.getString(kUpdateToldKey) == u.tag || ref.read(routingProvider).navigating) return;
+    prefs.setString(kUpdateToldKey, u.tag);
+    final s = context.s;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      duration: const Duration(seconds: 10),
+      content: Text(s.updateAvailable(u.tag)),
+      action: SnackBarAction(label: s.download, onPressed: openDownloadPage),
+    ));
+  }
+
   /// Offers a one-tap "Jem Teruk" report after a couple of minutes of crawling.
   void _maybeAskAboutJam(LatLng at, double speedMps) {
     final nav = ref.read(routingProvider);
@@ -436,6 +452,11 @@ class _MapScreenState extends ConsumerState<MapScreen> with SingleTickerProvider
     ref.watch(voiceEngineProvider); // starts the voice engine (it listens on its own)
 
     ref.listen(locationProvider, (_, next) => next.whenData(_onFix));
+
+    ref.listen(updateProvider, (_, next) {
+      final u = next.valueOrNull;
+      if (u != null) _offerUpdate(u);
+    });
 
     ref.listen(reportsProvider.select((s) => s.toast), (_, toast) {
       if (toast == null) return;

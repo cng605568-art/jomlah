@@ -72,6 +72,8 @@ sit with them for the five steps. Only install apps from links you trust.
 - **Voice reports:** while driving, tap the microphone and say what you see ("ada polis", "banjir",
   "塞车", "accident"); the app reports it and says so out loud. Malay, English and Chinese words all
   work, mixed too
+- Tells you when a new version is out (checks GitHub at most twice a day; "Download" opens the
+  install page, and you install over the old version). Turn it off in Settings
 - **Live traffic:** while you drive, phones share their speed anonymously, and slow parts of your
   route turn orange or red. It needs other Jomlah drivers on the same road, so it is mostly empty
   for now. Turn sharing off in Settings (see PRIVACY.md)

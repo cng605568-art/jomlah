@@ -362,6 +362,17 @@ and line. It does not build an APK; `main` still runs the full build, tests incl
   own tile cache needs `path_provider`; without it (plain widget tests) classic tiles never appear.
 - Map labels use the phone's default font; widget tests show them as boxes, that is expected.
 
+## Step 21: "new version is out" (no Google Play)
+- Without a store nobody gets updates, so the app reads `GET /repos/{REPO}/releases` (public, no key;
+  GitHub allows 60 requests an hour per IP) and compares tags (update/domain/app_version.dart). The
+  newest published release with an `.apk` that is newer than `APP_VERSION` wins; pre-releases count.
+- At most every 12 hours; the answer is kept in prefs (`update.checkedAt`, `update.latest`). MapScreen
+  shows a snackbar once per version (`update.told`), never during a trip; Settings shows a Download row
+  until it is installed, plus an on/off switch. "Download" opens the GitHub Pages install page; the
+  app never downloads or installs anything itself.
+- Builds without a version tag ("dev build N") and builds without `--dart-define=REPO=owner/name`
+  (local builds, tests) never check. build-apk.yml passes `REPO`.
+
 ## Publishing a release
 - Write `release-notes/<tag>.md` (first line `# Title`, then the notes) and commit it to `main`.
 - Then on GitHub: Releases > Draft a new release > type the tag (e.g. `v1.0.4(BETA)`), "Create new tag

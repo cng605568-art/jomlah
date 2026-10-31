@@ -8,3 +8,7 @@ const kDemoMode = kApiUrl == '';
 
 /// The release tag (e.g. "v1.0.4(BETA)") or "dev build N", filled in by the GitHub workflow.
 const kAppVersion = String.fromEnvironment('APP_VERSION', defaultValue: 'dev');
+
+/// "owner/name" of the GitHub repository the build came from. The app looks at its releases for
+/// newer versions; empty (local builds, tests) means no check.
+const kRepo = String.fromEnvironment('REPO');
