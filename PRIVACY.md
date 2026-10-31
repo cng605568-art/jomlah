@@ -54,8 +54,9 @@ It is not saved and not sent anywhere.
   The server does not store that ID. It keeps one-way scrambled values: one that changes daily (to stop
   spam) and one per alert (so a device can only vote once on it). These cannot be used to follow a
   person from alert to alert. Alerts are deleted a day after they expire.
-- **Simulasi (pretend drive):** nothing is sent. Reports and votes made during a simulation stay on
-  your phone, and the practice alerts it shows are never shared.
+- **Simulasi (pretend drive):** nothing you do is shared. Reports and votes made during a simulation
+  stay on your phone, and the practice alerts it shows are never shared. (The app still looks up real
+  alerts near the pretend car, the same way as above.)
 - **Builds without an alerts server** (for example a copy built by someone else without one) show
   sample alerts kept in the app's memory only.
 
