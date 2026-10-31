@@ -1,0 +1,11 @@
+{
+  "name": "jomlah-alerts",
+  "private": true,
+  "type": "module",
+  "description": "Jomlah shared road alerts on Cloudflare Workers + D1",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "deploy": "wrangler deploy"
+  }
+}

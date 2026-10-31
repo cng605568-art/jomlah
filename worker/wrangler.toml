@@ -1,0 +1,20 @@
+# Jomlah shared road alerts on Cloudflare Workers (free plan).
+# Deployed by .github/workflows/alerts-server.yml; you never need to run anything yourself.
+name = "jomlah-alerts"
+main = "src/index.js"
+compatibility_date = "2026-06-01"
+workers_dev = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "jomlah-alerts"
+database_id = "00000000-0000-0000-0000-000000000000" # filled in by the deploy workflow
+migrations_dir = "migrations"
+
+# Deletes old alerts and rate-limit records once an hour.
+[triggers]
+crons = ["17 * * * *"]
+
+# Privacy: no request logs kept.
+[observability]
+enabled = false
