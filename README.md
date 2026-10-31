@@ -15,7 +15,7 @@ navigation app that feels Malaysian (local place names, Manglish voices, alerts 
 actually meet on the road) and respects your privacy: no login, no ads, no analytics, and your
 trips are not stored.
 
-It is an early beta. Some parts are real and some are still samples, and the lists below are
+It is an early beta. Some parts are still rough, and the lists below are
 honest about which is which.
 
 ## Download (Android only)
@@ -63,11 +63,12 @@ sit with them for the five steps. Only install apps from links you trust.
   phone's text-to-speech: install the Malay or Chinese voice there if one stays silent
 - Keeps navigating with the screen off or another app open (Android shows a "navigation active"
   notification; on Android 13 and newer, allow notifications so you can see it)
-- Report buttons and a "Masih ada?" prompt when you pass an alert
+- **Shared alerts:** report police, speed cameras, floods, potholes, broken-down lorries, jams and
+  accidents with the orange button, and everyone nearby sees them. Passing an alert asks "Masih ada?";
+  your answer keeps it or removes it. No account, and no phone ID is stored (see PRIVACY.md)
 
 ## What does not work yet
 
-- Alerts in this beta are **samples** and are not shared between users yet
 - No live traffic, no offline maps, no CarPlay or Android Auto
 - Lane arrows only appear where OpenStreetMap has lane markings; many town junctions have none yet
 - Speed limits are missing on many roads, because OpenStreetMap does not have them everywhere yet.

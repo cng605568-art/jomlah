@@ -298,6 +298,25 @@ and line. It does not build an APK; `main` still runs the full build, tests incl
 - To add a language (Tamil, say): add it to `AppLanguage`, add a fourth string to every record in
   strings.dart (the compiler lists them), add voices for it and a `defaultVoiceFor` case.
 
+## Step 17: shared alerts on Cloudflare (worker/)
+- `worker/` is the alerts server on Cloudflare Workers (free plan) with a D1 database. Same API as
+  `server/api`, so `HttpReportRepository` talks to either. Rules are ported from `server/api`:
+  server-side lifetimes, twin reports within 100 m become a confirmation, one vote per phone per
+  alert, two net denies remove an alert. Device ids are never stored (daily HMAC for rate limits,
+  per-alert HMAC for votes). Rate limits live in D1 (`hits`): 10 reports per phone and 30 per
+  0.1-degree square per 10 minutes, 60 votes per phone. Hourly cron deletes old alerts.
+- "Near me" reads only the 0.1-degree squares around the driver (`cell` column), keeping D1 row
+  reads low (free plan: 5 million a day).
+- `.github/workflows/alerts-server.yml` tests on every push and deploys from `main` when the
+  `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` secrets exist. Live at
+  https://jomlah-alerts.cng605568.workers.dev (set the `API_URL` repository variable to use another
+  server). APK builds use it by default, so the app is no longer in demo mode.
+- The app sends only the rough area (2 decimal places, about 1 km) when asking for alerts.
+- Simulasi: `ReportsNotifier.setSimulating(true)` keeps reports and votes on the phone; practice
+  alerts live in the notifier on top of real ones (`test/simulasi_safety_test.dart`).
+- The first-run screen key moved to `onboarded.v2`, so everyone sees the new "Shared alerts" note once.
+- Moderation and privacy notes: `worker/README.md`.
+
 ## Publishing a release
 - Write `release-notes/<tag>.md` (first line `# Title`, then the notes) and commit it to `main`.
 - Then on GitHub: Releases > Draft a new release > type the tag (e.g. `v1.0.4(BETA)`), "Create new tag

@@ -139,7 +139,7 @@ jobs:
       # Optional repo variables (Settings > Secrets and variables > Actions > Variables):
       #   VALHALLA_URL  your own routing server   (unset = public demo server)
       #   PHOTON_URL    your own search server    (unset = public Photon API)
-      #   API_URL       your reports backend      (unset = demo mode, fake alerts)
+      #   API_URL       your reports backend      (unset = Jomlah's Cloudflare alerts server)
       #
       # Why this step is longer than one command: pubspec.lock is not committed, so every run
       # pulls the newest plugin versions, and those pull in the newest AndroidX libraries.
@@ -153,7 +153,8 @@ jobs:
         env:
           VALHALLA_URL: ${{ vars.VALHALLA_URL }}
           PHOTON_URL: ${{ vars.PHOTON_URL }}
-          API_URL: ${{ vars.API_URL }}
+          # Shared alerts: the Cloudflare Workers server in worker/ (deployed by alerts-server.yml).
+          API_URL: ${{ vars.API_URL || 'https://jomlah-alerts.cng605568.workers.dev' }}
           REPO: ${{ github.repository }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}   # read by Gradle when signing
         run: |
